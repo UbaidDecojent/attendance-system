@@ -22,7 +22,19 @@ async function bootstrap() {
     const logger = app.get(WinstonLoggerService);
 
     app.useLogger(logger);
-    app.use(helmet());
+    app.use(
+        helmet({
+            contentSecurityPolicy: {
+                directives: {
+                    defaultSrc: ["'self'"],
+                    scriptSrc: ["'self'", "'unsafe-inline'", 'unpkg.com'],
+                    styleSrc: ["'self'", "'unsafe-inline'", 'unpkg.com'],
+                    imgSrc: ["'self'", 'data:', 'unpkg.com'],
+                    connectSrc: ["'self'", 'unpkg.com'],
+                },
+            },
+        }),
+    );
     app.use(compression());
 
     app.enableCors({
