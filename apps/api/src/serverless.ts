@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -59,9 +60,19 @@ async function bootstrap() {
 }
 
 export default async function handler(req: any, res: any) {
-    if (!appPromise) {
-        appPromise = bootstrap();
+    try {
+        if (!appPromise) {
+            appPromise = bootstrap();
+        }
+        const app = await appPromise;
+        app(req, res);
+    } catch (error) {
+        console.error('Serverless Handler Error:', error);
+        res.status(500).json({
+            statusCode: 500,
+            message: 'Internal Server Error',
+            error: error instanceof Error ? error.message : String(error),
+            stack: process.env.NODE_ENV !== 'production' ? (error instanceof Error ? error.stack : undefined) : undefined
+        });
     }
-    const app = await appPromise;
-    app(req, res);
 }
