@@ -42,7 +42,7 @@ export default function LoginPage() {
 
             if (response.requires2FA) {
                 setRequires2FA(true);
-                setTempToken(response.tempToken);
+                setTempToken(response.tempToken || '');
                 toast.info('Please enter your 2FA code');
             } else {
                 setAuth(response.user, response.accessToken);
