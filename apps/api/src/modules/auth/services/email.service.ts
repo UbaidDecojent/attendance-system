@@ -183,6 +183,52 @@ export class EmailService {
     await this.sendEmail(email, `Welcome to ${companyName} - AttendancePro`, html);
   }
 
+  async sendInviteEmail(email: string, firstName: string, token: string, companyName: string) {
+    const inviteUrl = `${this.frontendUrl}/auth/reset-password?token=${token}`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Join ${companyName} on AttendancePro</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f5; }
+          .container { max-width: 600px; margin: 0 auto; padding: 40px 20px; }
+          .card { background: #ffffff; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); }
+          .logo { text-align: center; margin-bottom: 30px; }
+          .logo h1 { color: #4F46E5; margin: 0; font-size: 24px; }
+          h2 { color: #1a1a2e; margin-top: 0; }
+          .button { display: inline-block; background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%); color: #ffffff !important; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 20px 0; }
+          .footer { text-align: center; margin-top: 30px; color: #6b7280; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="card">
+            <div class="logo">
+              <h1>📊 AttendancePro</h1>
+            </div>
+            <h2>You've been invited!</h2>
+            <p>Hi ${firstName},</p>
+            <p>You have been invited to join <strong>${companyName}</strong> on AttendancePro.</p>
+            <p>To accept the invitation and set up your account password, please click the button below:</p>
+            <p style="text-align: center;">
+              <a href="${inviteUrl}" class="button">Accept Invitation & Set Password</a>
+            </p>
+            <p style="font-size: 14px; color: #6b7280;">This link will expire in 24 hours.</p>
+          </div>
+          <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} AttendancePro. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    await this.sendEmail(email, `Invitation to join ${companyName} - AttendancePro`, html);
+  }
+
   private async sendEmail(to: string, subject: string, html: string) {
     if (!this.resend) {
       this.logger.warn(`[MOCK EMAIL] To: ${to} | Subject: ${subject}`, 'EmailService');

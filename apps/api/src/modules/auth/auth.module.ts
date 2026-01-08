@@ -34,6 +34,6 @@ import { TwoFactorService } from './services/two-factor.service';
         EmailService,
         TwoFactorService,
     ],
-    exports: [AuthService],
+    exports: [AuthService, EmailService],
 })
 export class AuthModule { }

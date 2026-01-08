@@ -11,6 +11,9 @@ import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { EmployeeQueryDto } from './dto/employee-query.dto';
 import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
+import { v4 as uuidv4 } from 'uuid';
+import { addDays } from 'date-fns';
+import { EmailService } from '../auth/services/email.service';
 
 @Injectable()
 export class EmployeesService {
@@ -18,6 +21,7 @@ export class EmployeesService {
         private prisma: PrismaService,
         private logger: WinstonLoggerService,
         private configService: ConfigService,
+        private emailService: EmailService,
     ) { }
 
     async create(companyId: string, dto: CreateEmployeeDto) {
@@ -120,8 +124,14 @@ export class EmployeesService {
         // Create user account if requested
         if (dto.createUserAccount) {
             const saltRounds = parseInt(this.configService.get<string>('BCRYPT_SALT_ROUNDS') || '12', 10);
-            const tempPassword = this.generateTempPassword();
+
+            // Random secure password that user doesn't know (effectively unusable until reset)
+            const tempPassword = uuidv4();
             const passwordHash = await bcrypt.hash(tempPassword, saltRounds);
+
+            // Generate Invite Token (reusing Password Reset Token mechanism)
+            const passwordResetToken = uuidv4();
+            const passwordResetExpires = addDays(new Date(), 7); // 7 days to accept invites
 
             await this.prisma.user.create({
                 data: {
@@ -133,11 +143,27 @@ export class EmployeesService {
                     lastName: employee.lastName,
                     phone: employee.phone,
                     role: dto.userRole || 'EMPLOYEE',
-                    status: 'PENDING_VERIFICATION',
+                    status: 'ACTIVE', // Active immediately so they can 'Reset Password' to set it
+                    passwordResetToken,
+                    passwordResetExpires
                 },
             });
 
-            // TODO: Send welcome email with temp password
+            // Fetch company name for email
+            const company = await this.prisma.company.findUnique({
+                where: { id: companyId },
+                select: { name: true }
+            });
+
+            if (company) {
+                // Send Invite Email
+                await this.emailService.sendInviteEmail(
+                    employee.email,
+                    employee.firstName,
+                    passwordResetToken,
+                    company.name
+                );
+            }
         }
 
         this.logger.log(
