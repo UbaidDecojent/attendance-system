@@ -14,6 +14,7 @@ interface LoginResponse {
     accessToken: string;
     expiresIn: number;
     requires2FA?: boolean;
+    tempToken?: string;
 }
 
 interface TwoFALoginResponse {
