@@ -1,0 +1,762 @@
+import {
+    Injectable,
+    BadRequestException,
+    NotFoundException,
+    ForbiddenException,
+} from '@nestjs/common';
+import { PrismaService } from '../../common/prisma/prisma.service';
+import { WinstonLoggerService } from '../../common/services/logger.service';
+import { CheckInDto } from './dto/check-in.dto';
+import { CheckOutDto } from './dto/check-out.dto';
+import { ManualAttendanceDto } from './dto/manual-attendance.dto';
+import { AttendanceQueryDto } from './dto/attendance-query.dto';
+import {
+    startOfDay,
+    endOfDay,
+    startOfWeek,
+    endOfWeek,
+    startOfMonth,
+    endOfMonth,
+    differenceInMinutes,
+    parseISO,
+    format,
+} from 'date-fns';
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
+import { AttendanceStatus, AttendanceType } from '@prisma/client';
+
+@Injectable()
+export class AttendanceService {
+    constructor(
+        private prisma: PrismaService,
+        private logger: WinstonLoggerService,
+    ) { }
+
+    // ==================== CHECK IN ====================
+
+    async checkIn(employeeId: string, companyId: string, dto: CheckInDto) {
+        // Get employee with shift
+        const employee = await this.prisma.employee.findFirst({
+            where: { id: employeeId, companyId, isActive: true },
+            include: {
+                shift: true,
+                company: { select: { timezone: true, graceTimeMinutes: true } },
+            },
+        });
+
+        if (!employee) {
+            throw new NotFoundException('Employee not found');
+        }
+
+        const timezone = employee.company.timezone || 'UTC';
+        const now = new Date();
+        const zonedNow = toZonedTime(now, timezone);
+        const today = startOfDay(zonedNow);
+        const todayUtc = fromZonedTime(today, timezone);
+
+        // Check if already checked in today
+        const existingRecord = await this.prisma.attendanceRecord.findUnique({
+            where: {
+                employeeId_date: {
+                    employeeId,
+                    date: todayUtc,
+                },
+            },
+        });
+
+        if (existingRecord?.checkInTime) {
+            throw new BadRequestException('Already checked in today');
+        }
+
+        // Calculate late minutes based on shift
+        let lateMinutes = 0;
+        if (employee.shift) {
+            const [shiftHour, shiftMinute] = employee.shift.startTime.split(':').map(Number);
+            const shiftStart = new Date(zonedNow);
+            shiftStart.setHours(shiftHour, shiftMinute, 0, 0);
+
+            const graceTime = employee.shift.graceTimeIn || employee.company.graceTimeMinutes || 15;
+            const effectiveStart = new Date(shiftStart.getTime() + graceTime * 60000);
+
+            if (zonedNow > effectiveStart) {
+                lateMinutes = differenceInMinutes(zonedNow, shiftStart);
+            }
+        }
+
+        // Determine attendance type
+        let attendanceType: AttendanceType = dto.type || AttendanceType.OFFICE;
+
+        // Create or update attendance record
+        const record = await this.prisma.attendanceRecord.upsert({
+            where: {
+                employeeId_date: {
+                    employeeId,
+                    date: todayUtc,
+                },
+            },
+            create: {
+                companyId,
+                employeeId,
+                date: todayUtc,
+                checkInTime: now,
+                checkInLocation: dto.location ? { lat: dto.location.lat, lng: dto.location.lng } : undefined,
+                checkInIp: dto.ipAddress,
+                checkInDevice: dto.deviceInfo,
+                checkInNote: dto.note,
+                status: AttendanceStatus.PRESENT,
+                type: attendanceType,
+                workLocation: dto.workLocation,
+                lateMinutes,
+            },
+            update: {
+                checkInTime: now,
+                checkInLocation: dto.location ? { lat: dto.location.lat, lng: dto.location.lng } : undefined,
+                checkInIp: dto.ipAddress,
+                checkInDevice: dto.deviceInfo,
+                checkInNote: dto.note,
+                status: AttendanceStatus.PRESENT,
+                type: attendanceType,
+                workLocation: dto.workLocation,
+                lateMinutes,
+            },
+        });
+
+        this.logger.log(`Employee ${employeeId} checked in`, 'AttendanceService');
+
+        return {
+            message: 'Checked in successfully',
+            record: {
+                id: record.id,
+                checkInTime: record.checkInTime,
+                status: record.status,
+                lateMinutes: record.lateMinutes,
+            },
+        };
+    }
+
+    // ==================== CHECK OUT ====================
+
+    async checkOut(employeeId: string, companyId: string, dto: CheckOutDto) {
+        const employee = await this.prisma.employee.findFirst({
+            where: { id: employeeId, companyId, isActive: true },
+            include: {
+                shift: true,
+                company: { select: { timezone: true, overtimeThresholdMinutes: true } },
+            },
+        });
+
+        if (!employee) {
+            throw new NotFoundException('Employee not found');
+        }
+
+        const timezone = employee.company.timezone || 'UTC';
+        const now = new Date();
+        const zonedNow = toZonedTime(now, timezone);
+        const today = startOfDay(zonedNow);
+        const todayUtc = fromZonedTime(today, timezone);
+
+        // Get today's attendance record
+        const record = await this.prisma.attendanceRecord.findUnique({
+            where: {
+                employeeId_date: {
+                    employeeId,
+                    date: todayUtc,
+                },
+            },
+        });
+
+        if (!record) {
+            throw new BadRequestException('No check-in record found for today');
+        }
+
+        if (!record.checkInTime) {
+            throw new BadRequestException('Please check in first');
+        }
+
+        if (record.checkOutTime) {
+            throw new BadRequestException('Already checked out today');
+        }
+
+        if (record.isLocked) {
+            throw new ForbiddenException('Attendance record is locked');
+        }
+
+        // Calculate work duration and overtime
+        const totalWorkMinutes = differenceInMinutes(now, record.checkInTime) - record.totalBreakMinutes;
+
+        let overtimeMinutes = 0;
+        let earlyLeaveMinutes = 0;
+
+        if (employee.shift) {
+            const [endHour, endMinute] = employee.shift.endTime.split(':').map(Number);
+            const shiftEnd = new Date(zonedNow);
+            shiftEnd.setHours(endHour, endMinute, 0, 0);
+
+            const standardMinutes = employee.company.overtimeThresholdMinutes || 480;
+
+            if (totalWorkMinutes > standardMinutes) {
+                overtimeMinutes = totalWorkMinutes - standardMinutes;
+            }
+
+            if (zonedNow < shiftEnd) {
+                earlyLeaveMinutes = differenceInMinutes(shiftEnd, zonedNow);
+            }
+        }
+
+        // Determine status
+        let status = record.status;
+        if (employee.shift?.halfDayThreshold && totalWorkMinutes < employee.shift.halfDayThreshold) {
+            status = AttendanceStatus.HALF_DAY;
+        }
+
+        const updatedRecord = await this.prisma.attendanceRecord.update({
+            where: { id: record.id },
+            data: {
+                checkOutTime: now,
+                checkOutLocation: dto.location ? { lat: dto.location.lat, lng: dto.location.lng } : undefined,
+                checkOutIp: dto.ipAddress,
+                checkOutDevice: dto.deviceInfo,
+                checkOutNote: dto.note,
+                totalWorkMinutes,
+                overtimeMinutes,
+                earlyLeaveMinutes,
+                status,
+            },
+        });
+
+        this.logger.log(`Employee ${employeeId} checked out`, 'AttendanceService');
+
+        return {
+            message: 'Checked out successfully',
+            record: {
+                id: updatedRecord.id,
+                checkInTime: updatedRecord.checkInTime,
+                checkOutTime: updatedRecord.checkOutTime,
+                totalWorkMinutes: updatedRecord.totalWorkMinutes,
+                overtimeMinutes: updatedRecord.overtimeMinutes,
+                status: updatedRecord.status,
+            },
+        };
+    }
+
+    // ==================== BREAK TRACKING ====================
+
+    async startBreak(employeeId: string, companyId: string) {
+        const today = startOfDay(new Date());
+
+        const record = await this.prisma.attendanceRecord.findUnique({
+            where: {
+                employeeId_date: {
+                    employeeId,
+                    date: today,
+                },
+            },
+        });
+
+        if (!record || !record.checkInTime) {
+            throw new BadRequestException('Please check in first');
+        }
+
+        if (record.checkOutTime) {
+            throw new BadRequestException('Already checked out');
+        }
+
+        const breaks = (record.breaks as any[]) || [];
+        const lastBreak = breaks[breaks.length - 1];
+
+        if (lastBreak && !lastBreak.end) {
+            throw new BadRequestException('Please end your current break first');
+        }
+
+        breaks.push({
+            start: new Date().toISOString(),
+            end: null,
+            duration: 0,
+        });
+
+        await this.prisma.attendanceRecord.update({
+            where: { id: record.id },
+            data: { breaks },
+        });
+
+        return { message: 'Break started' };
+    }
+
+    async endBreak(employeeId: string, companyId: string) {
+        const today = startOfDay(new Date());
+
+        const record = await this.prisma.attendanceRecord.findUnique({
+            where: {
+                employeeId_date: {
+                    employeeId,
+                    date: today,
+                },
+            },
+        });
+
+        if (!record) {
+            throw new BadRequestException('No attendance record found');
+        }
+
+        const breaks = (record.breaks as any[]) || [];
+        const lastBreak = breaks[breaks.length - 1];
+
+        if (!lastBreak || lastBreak.end) {
+            throw new BadRequestException('No active break found');
+        }
+
+        const now = new Date();
+        lastBreak.end = now.toISOString();
+        lastBreak.duration = differenceInMinutes(now, new Date(lastBreak.start));
+
+        const totalBreakMinutes = breaks.reduce(
+            (sum, b) => sum + (b.duration || 0),
+            0,
+        );
+
+        await this.prisma.attendanceRecord.update({
+            where: { id: record.id },
+            data: {
+                breaks,
+                totalBreakMinutes,
+            },
+        });
+
+        return { message: 'Break ended', duration: lastBreak.duration };
+    }
+
+    // ==================== TODAY'S STATUS ====================
+
+    async getTodayStatus(employeeId: string, companyId: string) {
+        const employee = await this.prisma.employee.findFirst({
+            where: { id: employeeId, companyId, isActive: true },
+            include: {
+                shift: true,
+                company: { select: { timezone: true } },
+            },
+        });
+
+        if (!employee) {
+            throw new NotFoundException('Employee not found');
+        }
+
+        const timezone = employee.company.timezone || 'UTC';
+        const zonedNow = toZonedTime(new Date(), timezone);
+        const today = startOfDay(zonedNow);
+        const todayUtc = fromZonedTime(today, timezone);
+
+        const record = await this.prisma.attendanceRecord.findUnique({
+            where: {
+                employeeId_date: {
+                    employeeId,
+                    date: todayUtc,
+                },
+            },
+        });
+
+        // Check if today is a holiday
+        const holiday = await this.prisma.holiday.findFirst({
+            where: {
+                companyId,
+                date: todayUtc,
+            },
+        });
+
+        // Check if today is a weekend
+        const dayOfWeek = zonedNow.getDay();
+        const isWeekend = employee.shift
+            ? !employee.shift.workingDays.includes(dayOfWeek)
+            : dayOfWeek === 0 || dayOfWeek === 6;
+
+        // Check for approved leave
+        const leave = await this.prisma.leave.findFirst({
+            where: {
+                employeeId,
+                status: 'APPROVED',
+                startDate: { lte: todayUtc },
+                endDate: { gte: todayUtc },
+            },
+            include: { leaveType: true },
+        });
+
+        return {
+            date: format(zonedNow, 'yyyy-MM-dd'),
+            employee: {
+                id: employee.id,
+                name: `${employee.firstName} ${employee.lastName}`,
+                shift: employee.shift
+                    ? {
+                        name: employee.shift.name,
+                        startTime: employee.shift.startTime,
+                        endTime: employee.shift.endTime,
+                    }
+                    : null,
+            },
+            attendance: record
+                ? {
+                    id: record.id,
+                    checkInTime: record.checkInTime,
+                    checkOutTime: record.checkOutTime,
+                    status: record.status,
+                    type: record.type,
+                    totalWorkMinutes: record.totalWorkMinutes,
+                    lateMinutes: record.lateMinutes,
+                    overtimeMinutes: record.overtimeMinutes,
+                    breaks: record.breaks,
+                    isOnBreak: this.isOnBreak(record.breaks as any[]),
+                }
+                : null,
+            holiday: holiday
+                ? { name: holiday.name, type: holiday.type }
+                : null,
+            isWeekend,
+            leave: leave
+                ? {
+                    id: leave.id,
+                    type: leave.leaveType.name,
+                    startDate: leave.startDate,
+                    endDate: leave.endDate,
+                }
+                : null,
+        };
+    }
+
+    private isOnBreak(breaks: any[]): boolean {
+        if (!breaks || breaks.length === 0) return false;
+        const lastBreak = breaks[breaks.length - 1];
+        return lastBreak && !lastBreak.end;
+    }
+
+    // ==================== ATTENDANCE HISTORY ====================
+
+    async getHistory(
+        companyId: string,
+        query: AttendanceQueryDto,
+        requestingUser: any,
+    ) {
+        const {
+            employeeId,
+            departmentId,
+            startDate,
+            endDate,
+            status,
+            page = 1,
+            limit = 20,
+        } = query;
+
+        const skip = (page - 1) * limit;
+
+        const where: any = { companyId };
+
+        // Filter by employee
+        if (employeeId) {
+            // Employees can only view their own records
+            if (requestingUser.role === 'EMPLOYEE' && requestingUser.employee?.id !== employeeId) {
+                throw new ForbiddenException('You can only view your own attendance');
+            }
+            where.employeeId = employeeId;
+        } else if (requestingUser.role === 'EMPLOYEE') {
+            where.employeeId = requestingUser.employee?.id;
+        }
+
+        // Filter by department
+        if (departmentId) {
+            where.employee = { departmentId };
+        }
+
+        // Filter by date range
+        if (startDate || endDate) {
+            where.date = {};
+            if (startDate) where.date.gte = new Date(startDate);
+            if (endDate) where.date.lte = new Date(endDate);
+        }
+
+        // Filter by status
+        if (status) {
+            where.status = status;
+        }
+
+        const [records, total] = await Promise.all([
+            this.prisma.attendanceRecord.findMany({
+                where,
+                skip,
+                take: limit,
+                orderBy: { date: 'desc' },
+                include: {
+                    employee: {
+                        select: {
+                            id: true,
+                            firstName: true,
+                            lastName: true,
+                            employeeCode: true,
+                            department: { select: { name: true } },
+                        },
+                    },
+                },
+            }),
+            this.prisma.attendanceRecord.count({ where }),
+        ]);
+
+        return {
+            items: records,
+            meta: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
+    }
+
+    // ==================== MANUAL ENTRY (HR/Admin) ====================
+
+    async createManualEntry(
+        companyId: string,
+        dto: ManualAttendanceDto,
+        createdBy: string,
+    ) {
+        const employee = await this.prisma.employee.findFirst({
+            where: { id: dto.employeeId, companyId, isActive: true },
+        });
+
+        if (!employee) {
+            throw new NotFoundException('Employee not found');
+        }
+
+        const date = new Date(dto.date);
+        const dateOnly = startOfDay(date);
+
+        // Check for existing record
+        const existing = await this.prisma.attendanceRecord.findUnique({
+            where: {
+                employeeId_date: {
+                    employeeId: dto.employeeId,
+                    date: dateOnly,
+                },
+            },
+        });
+
+        if (existing && existing.isLocked) {
+            throw new ForbiddenException('Attendance record is locked');
+        }
+
+        // Calculate work minutes
+        let totalWorkMinutes = 0;
+        if (dto.checkInTime && dto.checkOutTime) {
+            totalWorkMinutes = differenceInMinutes(
+                new Date(dto.checkOutTime),
+                new Date(dto.checkInTime),
+            );
+        }
+
+        const record = await this.prisma.attendanceRecord.upsert({
+            where: {
+                employeeId_date: {
+                    employeeId: dto.employeeId,
+                    date: dateOnly,
+                },
+            },
+            create: {
+                companyId,
+                employeeId: dto.employeeId,
+                date: dateOnly,
+                checkInTime: dto.checkInTime ? new Date(dto.checkInTime) : null,
+                checkOutTime: dto.checkOutTime ? new Date(dto.checkOutTime) : null,
+                status: dto.status || AttendanceStatus.PRESENT,
+                type: dto.type || AttendanceType.OFFICE,
+                totalWorkMinutes,
+                lateMinutes: dto.lateMinutes || 0,
+                overtimeMinutes: dto.overtimeMinutes || 0,
+                isManualEntry: true,
+                manualEntryReason: dto.reason,
+            },
+            update: {
+                checkInTime: dto.checkInTime ? new Date(dto.checkInTime) : null,
+                checkOutTime: dto.checkOutTime ? new Date(dto.checkOutTime) : null,
+                status: dto.status,
+                type: dto.type,
+                totalWorkMinutes,
+                lateMinutes: dto.lateMinutes,
+                overtimeMinutes: dto.overtimeMinutes,
+                isManualEntry: true,
+                manualEntryReason: dto.reason,
+            },
+        });
+
+        this.logger.log(
+            `Manual attendance entry created for ${dto.employeeId} by ${createdBy}`,
+            'AttendanceService',
+        );
+
+        return record;
+    }
+
+    // ==================== APPROVAL & LOCKING ====================
+
+    async approveAttendance(recordId: string, approverId: string, companyId: string) {
+        const record = await this.prisma.attendanceRecord.findFirst({
+            where: { id: recordId, companyId },
+        });
+
+        if (!record) {
+            throw new NotFoundException('Attendance record not found');
+        }
+
+        return this.prisma.attendanceRecord.update({
+            where: { id: recordId },
+            data: {
+                isApproved: true,
+                approvedBy: approverId,
+                approvedAt: new Date(),
+            },
+        });
+    }
+
+    async lockAttendance(recordId: string, companyId: string) {
+        const record = await this.prisma.attendanceRecord.findFirst({
+            where: { id: recordId, companyId },
+        });
+
+        if (!record) {
+            throw new NotFoundException('Attendance record not found');
+        }
+
+        if (!record.isApproved) {
+            throw new BadRequestException('Attendance must be approved before locking');
+        }
+
+        return this.prisma.attendanceRecord.update({
+            where: { id: recordId },
+            data: {
+                isLocked: true,
+                lockedAt: new Date(),
+            },
+        });
+    }
+
+    async bulkLockAttendance(
+        companyId: string,
+        startDate: string,
+        endDate: string,
+    ) {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+
+        const result = await this.prisma.attendanceRecord.updateMany({
+            where: {
+                companyId,
+                date: { gte: start, lte: end },
+                isApproved: true,
+                isLocked: false,
+            },
+            data: {
+                isLocked: true,
+                lockedAt: new Date(),
+            },
+        });
+
+        return {
+            message: `${result.count} attendance records locked`,
+            count: result.count,
+        };
+    }
+
+    // ==================== STATISTICS ====================
+
+    async getDashboardStats(companyId: string, date?: string) {
+        const targetDate = date ? new Date(date) : new Date();
+        const dayStart = startOfDay(targetDate);
+        const dayEnd = endOfDay(targetDate);
+        const weekStart = startOfWeek(targetDate, { weekStartsOn: 1 });
+        const weekEnd = endOfWeek(targetDate, { weekStartsOn: 1 });
+        const monthStart = startOfMonth(targetDate);
+        const monthEnd = endOfMonth(targetDate);
+
+        // Get total active employees
+        const totalEmployees = await this.prisma.employee.count({
+            where: { companyId, isActive: true },
+        });
+
+        // Today's stats
+        const todayRecords = await this.prisma.attendanceRecord.findMany({
+            where: { companyId, date: dayStart },
+        });
+
+        const presentToday = todayRecords.filter(
+            (r) => r.status === 'PRESENT' || r.status === 'HALF_DAY',
+        ).length;
+        const lateToday = todayRecords.filter((r) => r.lateMinutes > 0).length;
+        const onLeaveToday = await this.prisma.leave.count({
+            where: {
+                companyId,
+                status: 'APPROVED',
+                startDate: { lte: dayStart },
+                endDate: { gte: dayStart },
+            },
+        });
+
+        // Weekly stats
+        const weeklyRecords = await this.prisma.attendanceRecord.groupBy({
+            by: ['status'],
+            where: {
+                companyId,
+                date: { gte: weekStart, lte: weekEnd },
+            },
+            _count: true,
+        });
+
+        // Monthly attendance rate
+        const monthlyAttendance = await this.prisma.attendanceRecord.count({
+            where: {
+                companyId,
+                date: { gte: monthStart, lte: monthEnd },
+                status: { in: ['PRESENT', 'HALF_DAY'] },
+            },
+        });
+
+        const workingDaysInMonth = this.getWorkingDaysCount(monthStart, targetDate);
+        const expectedAttendance = totalEmployees * workingDaysInMonth;
+        const attendanceRate =
+            expectedAttendance > 0 ? (monthlyAttendance / expectedAttendance) * 100 : 0;
+
+        return {
+            today: {
+                date: format(targetDate, 'yyyy-MM-dd'),
+                totalEmployees,
+                present: presentToday,
+                absent: totalEmployees - presentToday - onLeaveToday,
+                late: lateToday,
+                onLeave: onLeaveToday,
+                attendanceRate:
+                    totalEmployees > 0
+                        ? ((presentToday / totalEmployees) * 100).toFixed(1)
+                        : 0,
+            },
+            weekly: {
+                startDate: format(weekStart, 'yyyy-MM-dd'),
+                endDate: format(weekEnd, 'yyyy-MM-dd'),
+                breakdown: weeklyRecords,
+            },
+            monthly: {
+                month: format(targetDate, 'MMMM yyyy'),
+                totalAttendance: monthlyAttendance,
+                attendanceRate: attendanceRate.toFixed(1),
+                workingDays: workingDaysInMonth,
+            },
+        };
+    }
+
+    private getWorkingDaysCount(start: Date, end: Date): number {
+        let count = 0;
+        const current = new Date(start);
+
+        while (current <= end) {
+            const dayOfWeek = current.getDay();
+            if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+                count++;
+            }
+            current.setDate(current.getDate() + 1);
+        }
+
+        return count;
+    }
+}

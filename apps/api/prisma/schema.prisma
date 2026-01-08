@@ -1,0 +1,660 @@
+// Prisma Schema for SaaS Attendance Management System
+// Multi-tenant architecture with comprehensive attendance tracking
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== ENUMS ====================
+
+enum UserRole {
+  SUPER_ADMIN      // Platform owner
+  COMPANY_ADMIN    // Company administrator
+  HR_MANAGER       // HR personnel
+  TEAM_MANAGER     // Team/Department manager
+  EMPLOYEE         // Regular employee
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  PENDING_VERIFICATION
+  SUSPENDED
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  UNPAID
+  PAUSED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  HALF_DAY
+  ON_LEAVE
+  HOLIDAY
+  WEEKEND
+}
+
+enum NotificationType {
+  LEAVE_REQUEST
+  ATTENDANCE_LATE
+  ATTENDANCE_ABSENT
+  LEAVE_APPROVED
+  LEAVE_REJECTED
+  GENERAL
+}
+
+enum AttendanceType {
+  OFFICE
+  REMOTE
+  HYBRID
+  FIELD
+}
+
+enum WorkLocationType {
+  OFFICE
+  HOME
+  FIELD
+  OTHER
+}
+
+// ==================== COMPANY (TENANT) ====================
+
+model Company {
+  id                String    @id @default(uuid())
+  name              String
+  slug              String    @unique
+  email             String    @unique
+  phone             String?
+  website           String?
+  logo              String?
+  address           String?
+  city              String?
+  state             String?
+  country           String    @default("US")
+  postalCode        String?
+  timezone          String    @default("UTC")
+  dateFormat        String    @default("YYYY-MM-DD")
+  timeFormat        String    @default("HH:mm")
+  weekStartDay      Int       @default(1) // 0 = Sunday, 1 = Monday
+  fiscalYearStart   Int       @default(1) // Month (1-12)
+  
+  // Settings
+  allowRemoteAttendance     Boolean @default(true)
+  requireGpsTracking        Boolean @default(false)
+  allowIpRestriction        Boolean @default(false)
+  allowedIps                String[] @default([])
+  autoCheckoutEnabled       Boolean @default(false)
+  autoCheckoutTime          String?  // Time to auto checkout (HH:mm)
+  overtimeThresholdMinutes  Int     @default(480) // 8 hours
+  graceTimeMinutes          Int     @default(15)
+  
+  // Billing
+  stripeCustomerId          String?  @unique
+  
+  isActive          Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // Relations
+  users             User[]
+  employees         Employee[]
+  departments       Department[]
+  designations      Designation[]
+  shifts            Shift[]
+  leaveTypes        LeaveType[]
+  holidays          Holiday[]
+  attendanceRecords AttendanceRecord[]
+  leaves            Leave[]
+  subscriptions     Subscription[]
+  payments          Payment[]
+  auditLogs         AuditLog[]
+  notifications     Notification[]
+  
+  @@index([slug])
+  @@index([email])
+  @@index([stripeCustomerId])
+}
+
+// ==================== SUBSCRIPTION PLANS ====================
+
+model Plan {
+  id                String    @id @default(uuid())
+  name              String    @unique
+  description       String?
+  stripePriceIdMonthly    String? @unique
+  stripePriceIdYearly     String? @unique
+  priceMonthly      Decimal   @db.Decimal(10, 2)
+  priceYearly       Decimal   @db.Decimal(10, 2)
+  
+  // Feature limits
+  maxEmployees      Int       @default(25)
+  maxDepartments    Int       @default(5)
+  
+  // Feature flags
+  hasGpsTracking    Boolean   @default(false)
+  hasShiftManagement Boolean  @default(false)
+  hasAdvancedReports Boolean  @default(false)
+  hasApiAccess      Boolean   @default(false)
+  hasWhiteLabel     Boolean   @default(false)
+  hasCustomIntegrations Boolean @default(false)
+  hasPrioritySupport Boolean  @default(false)
+  
+  isActive          Boolean   @default(true)
+  sortOrder         Int       @default(0)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  subscriptions     Subscription[]
+  
+  @@index([isActive])
+}
+
+model Subscription {
+  id                String    @id @default(uuid())
+  companyId         String
+  planId            String
+  
+  stripeSubscriptionId  String?   @unique
+  status            SubscriptionStatus @default(TRIALING)
+  
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  cancelAtPeriodEnd  Boolean   @default(false)
+  canceledAt         DateTime?
+  trialEnd           DateTime?
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  company           Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  plan              Plan      @relation(fields: [planId], references: [id])
+  
+  @@unique([companyId, planId])
+  @@index([companyId])
+  @@index([stripeSubscriptionId])
+  @@index([status])
+}
+
+model Payment {
+  id                String    @id @default(uuid())
+  companyId         String
+  
+  stripePaymentIntentId String? @unique
+  stripeInvoiceId       String? @unique
+  
+  amount            Decimal   @db.Decimal(10, 2)
+  currency          String    @default("usd")
+  status            PaymentStatus @default(PENDING)
+  
+  description       String?
+  invoiceUrl        String?
+  invoicePdf        String?
+  
+  paidAt            DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  company           Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  @@index([companyId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ==================== USERS & AUTHENTICATION ====================
+
+model User {
+  id                String    @id @default(uuid())
+  companyId         String?
+  employeeId        String?   @unique
+  
+  email             String    @unique
+  passwordHash      String
+  
+  firstName         String
+  lastName          String
+  avatar            String?
+  phone             String?
+  
+  role              UserRole  @default(EMPLOYEE)
+  status            UserStatus @default(PENDING_VERIFICATION)
+  
+  // Email verification
+  emailVerified     Boolean   @default(false)
+  emailVerificationToken  String?
+  emailVerificationExpires DateTime?
+  
+  // Password reset
+  passwordResetToken      String?
+  passwordResetExpires    DateTime?
+  
+  // 2FA
+  twoFactorEnabled  Boolean   @default(false)
+  twoFactorSecret   String?
+  
+  // Security
+  lastLoginAt       DateTime?
+  lastLoginIp       String?
+  failedLoginAttempts Int     @default(0)
+  lockedUntil       DateTime?
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  company           Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee          Employee? @relation(fields: [employeeId], references: [id])
+  refreshTokens     RefreshToken[]
+  auditLogs         AuditLog[]
+  leaveApprovals    Leave[]   @relation("LeaveApprover")
+  attendanceApprovals AttendanceRecord[] @relation("AttendanceApprover")
+  notifications     Notification[]
+  
+  @@index([companyId])
+  @@index([email])
+  @@index([role])
+  @@index([status])
+}
+
+model RefreshToken {
+  id                String    @id @default(uuid())
+  userId            String
+  token             String    @unique
+  userAgent         String?
+  ipAddress         String?
+  expiresAt         DateTime
+  createdAt         DateTime  @default(now())
+  
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+}
+
+// ==================== EMPLOYEES ====================
+
+model Employee {
+  id                String    @id @default(uuid())
+  companyId         String
+  departmentId      String?
+  designationId     String?
+  shiftId           String?
+  managerId         String?
+  
+  employeeCode      String
+  firstName         String
+  lastName          String
+  email             String
+  phone             String?
+  avatar            String?
+  
+  dateOfBirth       DateTime?
+  gender            String?
+  maritalStatus     String?
+  
+  // Employment details
+  dateOfJoining     DateTime
+  dateOfLeaving     DateTime?
+  employmentType    String    @default("FULL_TIME") // FULL_TIME, PART_TIME, CONTRACT, INTERN
+  
+  // Address
+  address           String?
+  city              String?
+  state             String?
+  country           String?
+  postalCode        String?
+  
+  // Emergency contact
+  emergencyContactName   String?
+  emergencyContactPhone  String?
+  emergencyContactRelation String?
+  
+  // Leave balances (stored as JSON for flexibility)
+  leaveBalances     Json      @default("{}")
+  
+  isActive          Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  company           Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department        Department? @relation(fields: [departmentId], references: [id])
+  designation       Designation? @relation(fields: [designationId], references: [id])
+  shift             Shift?    @relation(fields: [shiftId], references: [id])
+  manager           Employee? @relation("EmployeeManager", fields: [managerId], references: [id])
+  subordinates      Employee[] @relation("EmployeeManager")
+  user              User?
+  attendanceRecords AttendanceRecord[]
+  leaves            Leave[]
+  
+  @@unique([companyId, employeeCode])
+  @@unique([companyId, email])
+  @@index([companyId])
+  @@index([departmentId])
+  @@index([designationId])
+  @@index([shiftId])
+  @@index([isActive])
+}
+
+// ==================== ORGANIZATION STRUCTURE ====================
+
+model Department {
+  id                String    @id @default(uuid())
+  companyId         String
+  parentId          String?
+  managerId         String?
+  
+  name              String
+  code              String
+  description       String?
+  
+  isActive          Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  company           Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  parent            Department? @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children          Department[] @relation("DepartmentHierarchy")
+  employees         Employee[]
+  
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@index([parentId])
+}
+
+model Designation {
+  id                String    @id @default(uuid())
+  companyId         String
+  
+  name              String
+  code              String
+  level             Int       @default(1) // Hierarchy level
+  description       String?
+  
+  isActive          Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  company           Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employees         Employee[]
+  
+  @@unique([companyId, code])
+  @@index([companyId])
+}
+
+// ==================== SHIFTS ====================
+
+model Shift {
+  id                String    @id @default(uuid())
+  companyId         String
+  
+  name              String
+  code              String
+  description       String?
+  
+  startTime         String    // HH:mm format
+  endTime           String    // HH:mm format
+  breakDuration     Int       @default(60) // in minutes
+  
+  // Working days (0 = Sunday, 6 = Saturday)
+  workingDays       Int[]     @default([1, 2, 3, 4, 5])
+  
+  // Grace periods
+  graceTimeIn       Int       @default(15) // minutes
+  graceTimeOut      Int       @default(15) // minutes
+  
+  // Half day settings
+  halfDayThreshold  Int       @default(240) // minutes (4 hours)
+  
+  // Overtime settings
+  overtimeEnabled   Boolean   @default(true)
+  overtimeMultiplier Decimal  @default(1.5) @db.Decimal(3, 2)
+  
+  isDefault         Boolean   @default(false)
+  isActive          Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  company           Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employees         Employee[]
+  
+  @@unique([companyId, code])
+  @@index([companyId])
+}
+
+// ==================== ATTENDANCE ====================
+
+model AttendanceRecord {
+  id                String    @id @default(uuid())
+  companyId         String
+  employeeId        String
+  
+  date              DateTime  @db.Date
+  
+  // Check-in details
+  checkInTime       DateTime?
+  checkInLocation   Json?     // { lat, lng, address }
+  checkInIp         String?
+  checkInDevice     String?
+  checkInNote       String?
+  
+  // Check-out details
+  checkOutTime      DateTime?
+  checkOutLocation  Json?
+  checkOutIp        String?
+  checkOutDevice    String?
+  checkOutNote      String?
+  
+  // Break tracking
+  breaks            Json      @default("[]") // [{ start, end, duration }]
+  totalBreakMinutes Int       @default(0)
+  
+  // Calculated values
+  totalWorkMinutes  Int       @default(0)
+  overtimeMinutes   Int       @default(0)
+  lateMinutes       Int       @default(0)
+  earlyLeaveMinutes Int       @default(0)
+  
+  status            AttendanceStatus @default(PRESENT)
+  type              AttendanceType   @default(OFFICE)
+  workLocation      WorkLocationType @default(OFFICE)
+  
+  // Manual entry tracking
+  isManualEntry     Boolean   @default(false)
+  manualEntryReason String?
+  
+  // Approval workflow
+  isApproved        Boolean   @default(false)
+  approvedBy        String?
+  approvedAt        DateTime?
+  isLocked          Boolean   @default(false)
+  lockedAt          DateTime?
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  company           Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee          Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  approver          User?     @relation("AttendanceApprover", fields: [approvedBy], references: [id])
+  
+  @@unique([employeeId, date])
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([date])
+  @@index([status])
+  @@index([isApproved])
+}
+
+// ==================== LEAVE MANAGEMENT ====================
+
+model LeaveType {
+  id                String    @id @default(uuid())
+  companyId         String
+  
+  name              String
+  code              String
+  description       String?
+  color             String    @default("#4F46E5") // For calendar display
+  
+  // Allocation
+  defaultDays       Int       @default(0)
+  maxCarryForward   Int       @default(0)
+  maxDays           Int       @default(30)
+  minDays           Decimal   @default(0.5) @db.Decimal(4, 2)
+  
+  // Rules
+  isPaid            Boolean   @default(true)
+  requiresApproval  Boolean   @default(true)
+  requiresDocument  Boolean   @default(false)
+  allowHalfDay      Boolean   @default(true)
+  allowBackdated    Boolean   @default(false)
+  maxBackdatedDays  Int       @default(7)
+  
+  // Gender specific (for maternity/paternity leaves)
+  applicableGender  String?   // M, F, or null for all
+  
+  isActive          Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  company           Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  leaves            Leave[]
+  
+  @@unique([companyId, code])
+  @@index([companyId])
+}
+
+model Leave {
+  id                String    @id @default(uuid())
+  companyId         String
+  employeeId        String
+  leaveTypeId       String
+  
+  startDate         DateTime  @db.Date
+  endDate           DateTime  @db.Date
+  totalDays         Decimal   @db.Decimal(4, 2)
+  
+  isHalfDay         Boolean   @default(false)
+  halfDayType       String?   // FIRST_HALF, SECOND_HALF
+  
+  reason            String
+  documentUrl       String?
+  
+  status            LeaveStatus @default(PENDING)
+  
+  // Approval details
+  approvedBy        String?
+  approvedAt        DateTime?
+  approverNote      String?
+  rejectionReason   String?
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  company           Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee          Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveType         LeaveType @relation(fields: [leaveTypeId], references: [id])
+  approver          User?     @relation("LeaveApprover", fields: [approvedBy], references: [id])
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([leaveTypeId])
+  @@index([status])
+  @@index([startDate, endDate])
+}
+
+model Holiday {
+  id                String    @id @default(uuid())
+  companyId         String
+  
+  name              String
+  date              DateTime  @db.Date
+  description       String?
+  type              String    @default("NATIONAL") // NATIONAL, COMPANY, OPTIONAL
+  
+  isOptional        Boolean   @default(false)
+  isRecurring       Boolean   @default(false)
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  company           Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  @@unique([companyId, date])
+  @@index([companyId])
+  @@index([date])
+}
+
+// ==================== AUDIT LOGS ====================
+
+model AuditLog {
+  id                String    @id @default(uuid())
+  companyId         String?
+  userId            String?
+  
+  action            String    // CREATE, UPDATE, DELETE, LOGIN, etc.
+  entity            String    // Table/entity name
+  entityId          String?
+  
+  oldValues         Json?
+  newValues         Json?
+  
+  ipAddress         String?
+  userAgent         String?
+  
+  createdAt         DateTime  @default(now())
+  
+  company           Company?  @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  user              User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  @@index([companyId])
+  @@index([userId])
+  @@index([entity])
+  @@index([createdAt])
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  companyId String
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  isRead    Boolean          @default(false)
+  
+  entityId  String?
+  entityType String?
+
+  createdAt DateTime         @default(now())
+  
+  company   Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([userId])
+  @@index([isRead])
+}
