@@ -206,7 +206,8 @@ export class EmailService {
       return data;
     } catch (error) {
       this.logger.error(`Failed to send email to ${to}: ${error.message}`, error instanceof Error ? error.stack : String(error), 'EmailService');
-      throw error;
+      // Do not throw error to avoid crashing the flow (e.g. Registration)
+      return null;
     }
   }
 }
