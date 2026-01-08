@@ -65,7 +65,16 @@ async function bootstrap() {
             .addBearerAuth()
             .build();
         const document = SwaggerModule.createDocument(app, config);
-        SwaggerModule.setup('api/docs', app, document);
+        SwaggerModule.setup('api/docs', app, document, {
+            customCssUrl: 'https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui.css',
+            customJs: [
+                'https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-bundle.js',
+                'https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-standalone-preset.js',
+            ],
+            swaggerOptions: {
+                persistAuthorization: true,
+            },
+        });
     }
 
     await app.init();
