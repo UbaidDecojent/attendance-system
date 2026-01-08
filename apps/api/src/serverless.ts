@@ -55,6 +55,19 @@ async function bootstrap() {
         new TransformInterceptor(),
     );
 
+    // Enable Swagger in Vercel
+    if (process.env.NODE_ENV !== 'production' || process.env.ENABLE_SWAGGER === 'true' || true) {
+        const { DocumentBuilder, SwaggerModule } = require('@nestjs/swagger');
+        const config = new DocumentBuilder()
+            .setTitle('Attendance System API')
+            .setDescription('API documentation for the Attendance Management System')
+            .setVersion('1.0')
+            .addBearerAuth()
+            .build();
+        const document = SwaggerModule.createDocument(app, config);
+        SwaggerModule.setup('api/docs', app, document);
+    }
+
     await app.init();
     return app.getHttpAdapter().getInstance();
 }
