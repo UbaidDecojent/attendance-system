@@ -7,6 +7,34 @@ export class WinstonLoggerService implements LoggerService {
     private logger: winston.Logger;
 
     constructor(private configService: ConfigService) {
+        const transports: winston.transport[] = [
+            new winston.transports.Console({
+                format: winston.format.combine(
+                    winston.format.colorize(),
+                    winston.format.printf(({ timestamp, level, message, context, ...meta }) => {
+                        const contextStr = context ? `[${context}]` : '';
+                        const metaStr = Object.keys(meta).length ? JSON.stringify(meta) : '';
+                        return `${timestamp} ${level} ${contextStr}: ${message} ${metaStr}`;
+                    }),
+                ),
+            }),
+        ];
+
+        // Only add file logging if NOT running on Vercel (read-only FS)
+        if (process.env.VERCEL !== '1') {
+            transports.push(
+                new winston.transports.File({
+                    filename: 'logs/error.log',
+                    level: 'error',
+                })
+            );
+            transports.push(
+                new winston.transports.File({
+                    filename: 'logs/combined.log',
+                })
+            );
+        }
+
         this.logger = winston.createLogger({
             level: configService.get<string>('LOG_LEVEL') || 'info',
             format: winston.format.combine(
@@ -15,31 +43,15 @@ export class WinstonLoggerService implements LoggerService {
                 winston.format.json(),
             ),
             defaultMeta: { service: 'attendance-api' },
-            transports: [
-                new winston.transports.Console({
-                    format: winston.format.combine(
-                        winston.format.colorize(),
-                        winston.format.printf(({ timestamp, level, message, context, ...meta }) => {
-                            const contextStr = context ? `[${context}]` : '';
-                            const metaStr = Object.keys(meta).length ? JSON.stringify(meta) : '';
-                            return `${timestamp} ${level} ${contextStr}: ${message} ${metaStr}`;
-                        }),
-                    ),
-                }),
-                new winston.transports.File({
-                    filename: 'logs/error.log',
-                    level: 'error',
-                }),
-                new winston.transports.File({
-                    filename: 'logs/combined.log',
-                }),
-            ],
+            transports,
         });
 
-        // Handle uncaught exceptions
-        this.logger.exceptions.handle(
-            new winston.transports.File({ filename: 'logs/exceptions.log' }),
-        );
+        // Handle uncaught exceptions only locally
+        if (process.env.VERCEL !== '1') {
+            this.logger.exceptions.handle(
+                new winston.transports.File({ filename: 'logs/exceptions.log' }),
+            );
+        }
     }
 
     log(message: string, context?: string) {
