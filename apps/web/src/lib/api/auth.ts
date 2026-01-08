@@ -13,6 +13,7 @@ interface LoginResponse {
     };
     accessToken: string;
     expiresIn: number;
+    requires2FA?: boolean;
 }
 
 interface TwoFALoginResponse {
