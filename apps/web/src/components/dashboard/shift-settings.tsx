@@ -5,6 +5,7 @@ import { shiftsApi, Shift } from '@/lib/api/shifts';
 import { toast } from 'sonner';
 import { Clock, Plus, Trash2, Edit2, Check, X, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/lib/stores/auth-store';
 
 export default function ShiftSettings() {
     const queryClient = useQueryClient();
@@ -24,6 +25,8 @@ export default function ShiftSettings() {
     };
 
     const [formData, setFormData] = useState<Partial<Shift>>(initialForm);
+    const user = useAuthStore((state: any) => state.user);
+    const isAdmin = ['COMPANY_ADMIN', 'HR_MANAGER'].includes(user?.role || '');
 
     const { data: shifts, isLoading } = useQuery({
         queryKey: ['shifts'],
@@ -117,7 +120,7 @@ export default function ShiftSettings() {
                     <h2 className="text-xl font-bold text-white">Shift Timings</h2>
                     <p className="text-sm text-zinc-500 font-medium">Configure office hours and lateness rules</p>
                 </div>
-                {!isAdding && (
+                {!isAdding && isAdmin && (
                     <button
                         onClick={() => setIsAdding(true)}
                         className="bg-lime hover:bg-lime-400 text-black px-6 py-2.5 rounded-full font-bold transition-all text-sm flex items-center gap-2 hover:scale-105"
@@ -256,24 +259,26 @@ export default function ShiftSettings() {
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={() => startEdit(shift)}
-                                    className="h-10 w-10 rounded-xl bg-black border border-white/5 flex items-center justify-center text-zinc-500 hover:text-white hover:bg-zinc-800 transition-colors"
-                                >
-                                    <Edit2 className="h-4 w-4" />
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        if (confirm('Are you sure you want to delete this shift?')) {
-                                            deleteMutation.mutate(shift.id);
-                                        }
-                                    }}
-                                    className="h-10 w-10 rounded-xl bg-black border border-white/5 flex items-center justify-center text-zinc-500 hover:text-red-500 hover:bg-red-500/10 hover:border-red-500/20 transition-colors"
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                </button>
-                            </div>
+                            {isAdmin && (
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => startEdit(shift)}
+                                        className="h-10 w-10 rounded-xl bg-black border border-white/5 flex items-center justify-center text-zinc-500 hover:text-white hover:bg-zinc-800 transition-colors"
+                                    >
+                                        <Edit2 className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            if (confirm('Are you sure you want to delete this shift?')) {
+                                                deleteMutation.mutate(shift.id);
+                                            }
+                                        }}
+                                        className="h-10 w-10 rounded-xl bg-black border border-white/5 flex items-center justify-center text-zinc-500 hover:text-red-500 hover:bg-red-500/10 hover:border-red-500/20 transition-colors"
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     ))
                 )}
