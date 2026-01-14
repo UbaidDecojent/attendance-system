@@ -12,10 +12,12 @@ import {
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { Request } from 'express';
 import { AttendanceService } from './attendance.service';
+import { AttendanceScheduler } from './attendance.scheduler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 import { UserRole } from '@prisma/client';
 import { CheckInDto } from './dto/check-in.dto';
 import { CheckOutDto } from './dto/check-out.dto';
@@ -30,7 +32,18 @@ import { UpdateRegularizationDto } from './dto/update-regularization.dto';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth('JWT-auth')
 export class AttendanceController {
-    constructor(private readonly attendanceService: AttendanceService) { }
+    constructor(
+        private readonly attendanceService: AttendanceService,
+        private readonly attendanceScheduler: AttendanceScheduler
+    ) { }
+
+    @Public()
+    @Get('cron/late-check-ins')
+    @ApiOperation({ summary: 'Trigger late check-in processing (Cron)' })
+    async triggerLateCheckins() {
+        await this.attendanceScheduler.handleLateCheckins();
+        return { success: true, message: 'Late check-in processing triggered' };
+    }
 
     // ==================== EMPLOYEE SELF-SERVICE ====================
 
