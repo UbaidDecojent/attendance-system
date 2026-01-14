@@ -76,6 +76,11 @@ export default function AttendancePage() {
                             <span className="text-lime font-bold">
                                 {formatTime(record.checkInTime)}
                             </span>
+                            {record.lateMinutes > 0 && (
+                                <span className="text-red-500 text-[10px] font-extrabold uppercase tracking-wide">
+                                    Late: {record.lateMinutes}m
+                                </span>
+                            )}
                             {record.checkInLocation && (
                                 <button
                                     onClick={() => setSelectedLocation({
@@ -106,6 +111,11 @@ export default function AttendancePage() {
                             <span className="text-white font-bold">
                                 {formatTime(record.checkOutTime)}
                             </span>
+                            {record.earlyLeavingMinutes > 0 && (
+                                <span className="text-orange-500 text-[10px] font-extrabold uppercase tracking-wide">
+                                    Early: {record.earlyLeavingMinutes}m
+                                </span>
+                            )}
                             {record.checkOutLocation && (
                                 <button
                                     onClick={() => setSelectedLocation({
