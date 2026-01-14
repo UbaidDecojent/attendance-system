@@ -31,29 +31,25 @@
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 243 75% 59%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --background: 0 0% 0%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 72 100% 50%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 0 0% 10%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 65%;
+    --accent: 72 100% 50%;
+    --accent-foreground: 0 0% 0%;
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --success: 142 76% 36%;
-    --success-foreground: 210 40% 98%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 222.2 84% 4.9%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 243 75% 59%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 72 100% 50%;
   }
 }
 
@@ -61,7 +57,7 @@
   * {
     @apply border-border;
   }
-  
+
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
@@ -91,6 +87,7 @@
 }
 
 @layer components {
+
   /* Glass morphism card */
   .glass-card {
     @apply bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-white/20 dark:border-gray-700/30;
@@ -102,29 +99,24 @@
   }
 
   /* Premium button */
+  /* Premium button */
   .btn-premium {
-    @apply relative overflow-hidden bg-gradient-to-r from-primary to-purple-600 text-white font-medium 
-           px-6 py-3 rounded-xl shadow-lg shadow-primary/25 
-           hover:shadow-xl hover:shadow-primary/30 hover:scale-[1.02]
-           active:scale-[0.98] transition-all duration-200;
+    @apply relative overflow-hidden bg-primary text-primary-foreground font-bold px-6 py-3 rounded-full transition-all duration-300;
+    box-shadow: 0 0 20px rgba(204, 255, 0, 0.3);
   }
 
-  .btn-premium::before {
-    content: '';
-    @apply absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 
-           translate-x-[-100%] transition-transform duration-500;
+  .btn-premium:hover {
+    @apply scale-105;
+    box-shadow: 0 0 30px rgba(204, 255, 0, 0.5);
   }
 
-  .btn-premium:hover::before {
-    @apply translate-x-[100%];
+  .btn-premium:active {
+    @apply scale-95;
   }
 
   /* Stats card */
   .stats-card {
-    @apply relative overflow-hidden rounded-2xl p-6 
-           bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900
-           border border-gray-100 dark:border-gray-700
-           shadow-soft hover:shadow-soft-lg transition-shadow duration-300;
+    @apply relative overflow-hidden rounded-2xl p-6 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 border border-gray-100 dark:border-gray-700 shadow-soft hover:shadow-soft-lg transition-shadow duration-300;
   }
 
   /* Input focus ring */
@@ -134,9 +126,7 @@
 
   /* Sidebar link */
   .sidebar-link {
-    @apply flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground
-           hover:bg-primary/5 hover:text-primary
-           transition-all duration-200;
+    @apply flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-primary/5 hover:text-primary transition-all duration-200;
   }
 
   .sidebar-link.active {
@@ -172,9 +162,7 @@
 
   .shimmer::after {
     content: '';
-    @apply absolute inset-0 
-           bg-gradient-to-r from-transparent via-white/60 to-transparent
-           animate-shimmer;
+    @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent animate-shimmer;
   }
 
   /* Pulse dot */
@@ -189,27 +177,58 @@
 }
 
 @layer utilities {
-  /* Hide scrollbar */
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-  
-  .no-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+  .preserve-3d {
+    transform-style: preserve-3d;
   }
 
-  /* Text balance */
-  .text-balance {
-    text-wrap: balance;
+  .perspective-1000 {
+    perspective: 1000px;
   }
 
-  /* Mask gradients */
-  .mask-gradient-b {
-    mask-image: linear-gradient(to bottom, black 60%, transparent);
+  .perspective-2000 {
+    perspective: 2000px;
   }
 
-  .mask-gradient-r {
-    mask-image: linear-gradient(to right, black 80%, transparent);
+  .rotate-x-20 {
+    transform: rotateX(20deg);
   }
+
+  .rotate-y-20 {
+    transform: rotateY(20deg);
+  }
+}
+
+/* Hide scrollbar */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Text balance */
+.text-balance {
+  text-wrap: balance;
+}
+
+/* Mask gradients */
+.mask-gradient-b {
+  mask-image: linear-gradient(to bottom, black 60%, transparent);
+}
+
+.mask-gradient-r {
+  mask-image: linear-gradient(to right, black 80%, transparent);
+}
+
+/* Typography Overrides for Consistent "Soft" Bold */
+.font-bold,
+strong,
+b {
+  font-weight: 600 !important;
+}
+
+.font-extrabold {
+  font-weight: 700 !important;
 }

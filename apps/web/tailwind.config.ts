@@ -13,44 +13,47 @@ const config: Config = {
                 border: 'hsl(var(--border))',
                 input: 'hsl(var(--input))',
                 ring: 'hsl(var(--ring))',
-                background: 'hsl(var(--background))',
-                foreground: 'hsl(var(--foreground))',
+                background: '#000000',
+                foreground: '#ffffff',
                 primary: {
-                    DEFAULT: 'hsl(var(--primary))',
-                    foreground: 'hsl(var(--primary-foreground))',
+                    DEFAULT: '#CCFF00',
+                    foreground: '#000000',
                 },
                 secondary: {
-                    DEFAULT: 'hsl(var(--secondary))',
-                    foreground: 'hsl(var(--secondary-foreground))',
+                    DEFAULT: '#1A1A1A',
+                    foreground: '#ffffff',
                 },
                 destructive: {
                     DEFAULT: 'hsl(var(--destructive))',
                     foreground: 'hsl(var(--destructive-foreground))',
                 },
                 muted: {
-                    DEFAULT: 'hsl(var(--muted))',
-                    foreground: 'hsl(var(--muted-foreground))',
+                    DEFAULT: '#27272a',
+                    foreground: '#a1a1aa',
                 },
                 accent: {
-                    DEFAULT: 'hsl(var(--accent))',
-                    foreground: 'hsl(var(--accent-foreground))',
+                    DEFAULT: '#CCFF00',
+                    foreground: '#000000',
                 },
                 popover: {
-                    DEFAULT: 'hsl(var(--popover))',
-                    foreground: 'hsl(var(--popover-foreground))',
+                    DEFAULT: '#111111',
+                    foreground: '#ffffff',
                 },
                 card: {
-                    DEFAULT: 'hsl(var(--card))',
-                    foreground: 'hsl(var(--card-foreground))',
+                    DEFAULT: '#111111',
+                    foreground: '#ffffff',
                 },
-                success: {
-                    DEFAULT: 'hsl(var(--success))',
-                    foreground: 'hsl(var(--success-foreground))',
+                // Custom aliases for the new design
+                lime: {
+                    DEFAULT: '#CCFF00',
+                    400: '#CCFF00',
+                    500: '#bfff00',
+                    600: '#a3d900',
                 },
-                warning: {
-                    DEFAULT: 'hsl(var(--warning))',
-                    foreground: 'hsl(var(--warning-foreground))',
-                },
+                surface: {
+                    DEFAULT: '#111111',
+                    hover: '#1A1A1A',
+                }
             },
             borderRadius: {
                 lg: 'var(--radius)',
@@ -58,7 +61,7 @@ const config: Config = {
                 sm: 'calc(var(--radius) - 4px)',
             },
             fontFamily: {
-                sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
+                sans: ['var(--font-outfit)', 'system-ui', 'sans-serif'],
             },
             keyframes: {
                 'accordion-down': {
@@ -110,8 +113,8 @@ const config: Config = {
                 'slide-in-from-bottom': 'slide-in-from-bottom 0.3s ease-out',
                 'slide-in-from-left': 'slide-in-from-left 0.3s ease-out',
                 'slide-in-from-right': 'slide-in-from-right 0.3s ease-out',
-                shimmer: 'shimmer 2s infinite',
-                pulse: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                shimmer: 'shimmer 8s linear infinite',
+                pulse: 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
             },
             boxShadow: {
                 'soft': '0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04)',

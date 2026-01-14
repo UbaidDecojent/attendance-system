@@ -35,7 +35,7 @@ const bottomNavigation = [
     { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
     const pathname = usePathname();
     const [mobileOpen, setMobileOpen] = useState(false);
     const user = useAuthStore((state) => state.user);
@@ -52,8 +52,8 @@ export default function Sidebar() {
     const NavLinks = () => (
         <>
             <div className="flex-1 flex flex-col gap-1">
-                <div className="px-3 mb-4">
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <div className={cn("px-4 mb-2 transition-opacity duration-300", collapsed ? "opacity-0 h-0 overflow-hidden" : "opacity-100")}>
+                    <span className="text-xs font-medium text-zinc-600 uppercase tracking-widest pl-2">
                         Main Menu
                     </span>
                 </div>
@@ -63,19 +63,30 @@ export default function Sidebar() {
                         href={item.href}
                         onClick={() => setMobileOpen(false)}
                         className={cn(
-                            'sidebar-link',
-                            isActive(item.href) && 'active'
+                            'flex items-center gap-4 px-3 py-3 rounded-[2rem] transition-all duration-300 group relative mx-2',
+                            collapsed ? "justify-center" : "",
+                            isActive(item.href)
+                                ? 'bg-lime text-black font-semibold shadow-[0_0_20px_rgba(204,255,0,0.1)]'
+                                : 'text-zinc-300 hover:text-white hover:bg-white/5'
                         )}
+                        title={collapsed ? item.name : undefined}
                     >
-                        <item.icon className="h-5 w-5" />
-                        {item.name}
+                        <div className={cn(
+                            "h-6 w-6 flex items-center justify-center transition-colors duration-300",
+                            isActive(item.href) ? "text-black" : "text-current"
+                        )}>
+                            <item.icon className="h-5 w-5" />
+                        </div>
+                        {!collapsed && (
+                            <span className="relative z-10 whitespace-nowrap overflow-hidden text-ellipsis">{item.name}</span>
+                        )}
                     </Link>
                 ))}
             </div>
 
-            <div className="border-t pt-4">
-                <div className="px-3 mb-4">
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            <div className={cn("pt-2 mt-2 border-t border-white/5", collapsed ? "border-t-0" : "")}>
+                <div className={cn("px-4 mb-2 transition-opacity duration-300", collapsed ? "opacity-0 h-0 overflow-hidden" : "opacity-100")}>
+                    <span className="text-xs font-medium text-zinc-600 uppercase tracking-widest pl-2">
                         Settings
                     </span>
                 </div>
@@ -85,33 +96,59 @@ export default function Sidebar() {
                         href={item.href}
                         onClick={() => setMobileOpen(false)}
                         className={cn(
-                            'sidebar-link',
-                            isActive(item.href) && 'active'
+                            'flex items-center gap-4 px-3 py-3 rounded-[2rem] transition-all duration-300 group mx-2',
+                            collapsed ? "justify-center" : "",
+                            isActive(item.href)
+                                ? 'bg-lime text-black font-semibold'
+                                : 'text-zinc-300 hover:text-white hover:bg-white/5'
                         )}
+                        title={collapsed ? item.name : undefined}
                     >
-                        <item.icon className="h-5 w-5" />
-                        {item.name}
+                        <div className={cn(
+                            "h-6 w-6 flex items-center justify-center transition-colors duration-300",
+                            isActive(item.href) ? "text-black" : "text-current"
+                        )}>
+                            <item.icon className="h-5 w-5" />
+                        </div>
+                        {!collapsed && (
+                            <span className="whitespace-nowrap overflow-hidden text-ellipsis">{item.name}</span>
+                        )}
                     </Link>
                 ))}
                 <button
                     onClick={() => logout()}
-                    className="sidebar-link w-full text-left text-destructive hover:text-destructive hover:bg-destructive/5"
+                    className={cn(
+                        "flex items-center gap-4 px-3 py-3 rounded-[2rem] text-zinc-300 hover:text-red-400 hover:bg-white/5 transition-all duration-300 group mt-1 mx-2",
+                        collapsed ? "justify-center" : ""
+                    )}
+                    title="Logout"
                 >
-                    <LogOut className="h-5 w-5" />
-                    Logout
+                    <div className="h-6 w-6 flex items-center justify-center transition-colors">
+                        <LogOut className="h-5 w-5" />
+                    </div>
+                    {!collapsed && "Logout"}
                 </button>
             </div>
 
             {/* User Info */}
-            <div className="border-t pt-4 mt-4">
-                <div className="flex items-center gap-3 px-4 py-2">
-                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white font-medium">
-                        {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
+            <div className={cn("mt-auto pt-6 pb-4", collapsed ? "" : "px-4")}>
+                <div className={cn(
+                    "flex items-center gap-3 p-1 transition-colors cursor-pointer",
+                    collapsed ? "justify-center" : ""
+                )}>
+                    <div className="h-10 w-10 rounded-full bg-zinc-800 flex items-center justify-center text-white font-medium border border-white/10 overflow-hidden relative">
+                        {user?.avatar ? (
+                            <img src={user.avatar} alt="Profile" className="h-full w-full object-cover" />
+                        ) : (
+                            <span>{user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}</span>
+                        )}
                     </div>
-                    <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{user?.firstName} {user?.lastName}</p>
-                        <p className="text-xs text-muted-foreground truncate">{user?.role.replace('_', ' ')}</p>
-                    </div>
+                    {!collapsed && (
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-white truncate">{user?.firstName} {user?.lastName}</p>
+                            <p className="text-xs text-zinc-500 truncate">{user?.role.replace('_', ' ')}</p>
+                        </div>
+                    )}
                 </div>
             </div>
         </>
@@ -122,7 +159,7 @@ export default function Sidebar() {
             {/* Mobile menu button */}
             <button
                 onClick={() => setMobileOpen(true)}
-                className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-background border shadow-sm"
+                className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-full bg-black border border-white/10 text-white shadow-sm"
             >
                 <Menu className="h-6 w-6" />
             </button>
@@ -131,22 +168,29 @@ export default function Sidebar() {
             {mobileOpen && (
                 <div className="lg:hidden fixed inset-0 z-50 flex">
                     <div
-                        className="fixed inset-0 bg-black/50"
+                        className="fixed inset-0 bg-black/90 backdrop-blur-sm"
                         onClick={() => setMobileOpen(false)}
                     />
-                    <div className="relative w-72 bg-background flex flex-col p-4">
+                    <div className="relative w-72 bg-black border-r border-white/10 flex flex-col p-4">
                         <button
                             onClick={() => setMobileOpen(false)}
-                            className="absolute top-4 right-4 p-2"
+                            className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-white"
                         >
                             <X className="h-5 w-5" />
                         </button>
 
-                        <div className="flex items-center gap-2 mb-8">
-                            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center">
-                                <Clock className="h-6 w-6 text-white" />
+                        <div className="flex items-center gap-3 mb-10 px-4 mt-4">
+                            <div className="h-10 w-10 rounded-xl bg-lime shadow-[0_0_15px_rgba(204,255,0,0.3)] flex items-center justify-center">
+                                <Clock className="h-5 w-5 text-black transform -rotate-12 stroke-2" />
                             </div>
-                            <span className="text-xl font-bold">AttendancePro</span>
+                            <div className="flex flex-col gap-0.5">
+                                <span className="text-xl font-bold text-white tracking-tight leading-none">
+                                    ATTENDIFY<span className="text-lime">.</span>
+                                </span>
+                                <span className="text-[10px] font-medium text-zinc-500 tracking-[0.2em] uppercase">
+                                    MANAGEMENT
+                                </span>
+                            </div>
                         </div>
 
                         <NavLinks />
@@ -154,17 +198,29 @@ export default function Sidebar() {
                 </div>
             )}
 
-            {/* Desktop sidebar */}
-            <aside className="hidden lg:flex fixed left-0 top-0 bottom-0 w-72 border-r bg-background flex-col p-4">
-                <div className="flex items-center gap-2 mb-8">
-                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center">
-                        <Clock className="h-6 w-6 text-white" />
+            {/* Desktop sidebar content */}
+            <div className="hidden lg:flex flex-col h-full bg-black p-4 overflow-y-auto border-r border-white/5">
+                {/* Logo */}
+                {/* Logo */}
+                <div className={cn("flex items-center gap-3 mb-10 transition-all duration-300 h-16", collapsed ? "justify-center px-0" : "px-4")}>
+                    <div className="h-10 w-10 rounded-xl bg-lime shadow-[0_0_15px_rgba(204,255,0,0.3)] flex items-center justify-center min-w-[40px] hover:scale-105 transition-transform">
+                        <Clock className="h-5 w-5 text-black transform -rotate-12 stroke-2" />
                     </div>
-                    <span className="text-xl font-bold">AttendancePro</span>
+                    {!collapsed && (
+                        <div className="flex flex-col gap-0.5">
+                            <span className="text-xl font-bold text-white tracking-tight leading-none">
+                                ATTENDIFY<span className="text-lime">.</span>
+                            </span>
+                            <span className="text-[10px] font-medium text-zinc-500 tracking-[0.2em] uppercase">
+                                MANAGEMENT
+                            </span>
+                        </div>
+                    )}
                 </div>
 
+                {/* Main Menu */}
                 <NavLinks />
-            </aside>
+            </div>
         </>
     );
 }

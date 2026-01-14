@@ -1,28 +1,36 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { format, formatDistanceToNow, parseISO } from 'date-fns';
+import { format, formatDistanceToNow, parseISO, isValid } from 'date-fns';
 
 export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
 
-export function formatDate(date: string | Date, formatStr = 'MMM d, yyyy') {
+export function formatDate(date: string | Date | null | undefined, formatStr = 'MMM d, yyyy') {
+    if (!date) return '';
     const d = typeof date === 'string' ? parseISO(date) : date;
+    if (!isValid(d)) return '';
     return format(d, formatStr);
 }
 
-export function formatTime(date: string | Date) {
+export function formatTime(date: string | Date | null | undefined) {
+    if (!date) return '';
     const d = typeof date === 'string' ? parseISO(date) : date;
+    if (!isValid(d)) return '';
     return format(d, 'h:mm a');
 }
 
-export function formatDateTime(date: string | Date) {
+export function formatDateTime(date: string | Date | null | undefined) {
+    if (!date) return '';
     const d = typeof date === 'string' ? parseISO(date) : date;
+    if (!isValid(d)) return '';
     return format(d, 'MMM d, yyyy h:mm a');
 }
 
-export function formatRelative(date: string | Date) {
+export function formatRelative(date: string | Date | null | undefined) {
+    if (!date) return '';
     const d = typeof date === 'string' ? parseISO(date) : date;
+    if (!isValid(d)) return '';
     return formatDistanceToNow(d, { addSuffix: true });
 }
 

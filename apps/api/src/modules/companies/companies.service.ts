@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
+import { CreateOfficeLocationDto, UpdateOfficeLocationDto } from './dto/office-location.dto';
 
 @Injectable()
 export class CompaniesService {
@@ -125,5 +126,37 @@ export class CompaniesService {
                 currentPeriodEnd: subscription.currentPeriodEnd,
             } : null,
         };
+    }
+
+    // ==================== OFFICE LOCATIONS ====================
+
+    async addOfficeLocation(companyId: string, dto: CreateOfficeLocationDto) {
+        return this.prisma.officeLocation.create({
+            data: {
+                ...dto,
+                companyId,
+            }
+        });
+    }
+
+    async getOfficeLocations(companyId: string) {
+        return this.prisma.officeLocation.findMany({
+            where: { companyId, isActive: true },
+        });
+    }
+
+    async updateOfficeLocation(locationId: string, companyId: string, dto: UpdateOfficeLocationDto) {
+        const location = await this.prisma.officeLocation.findFirst({
+            where: { id: locationId, companyId },
+        });
+
+        if (!location) {
+            throw new NotFoundException('Office location not found');
+        }
+
+        return this.prisma.officeLocation.update({
+            where: { id: locationId },
+            data: dto,
+        });
     }
 }

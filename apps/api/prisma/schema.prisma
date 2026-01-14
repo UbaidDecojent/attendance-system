@@ -134,6 +134,8 @@ model Company {
   payments          Payment[]
   auditLogs         AuditLog[]
   notifications     Notification[]
+  officeLocations   OfficeLocation[]
+  regularizationRequests RegularizationRequest[]
   
   @@index([slug])
   @@index([email])
@@ -272,6 +274,7 @@ model User {
   auditLogs         AuditLog[]
   leaveApprovals    Leave[]   @relation("LeaveApprover")
   attendanceApprovals AttendanceRecord[] @relation("AttendanceApprover")
+  regularizationApprovals RegularizationRequest[] @relation("RegularizationApprover")
   notifications     Notification[]
   
   @@index([companyId])
@@ -350,6 +353,7 @@ model Employee {
   user              User?
   attendanceRecords AttendanceRecord[]
   leaves            Leave[]
+  regularizationRequests RegularizationRequest[]
   
   @@unique([companyId, employeeCode])
   @@unique([companyId, email])
@@ -657,4 +661,51 @@ model Notification {
   @@index([companyId])
   @@index([userId])
   @@index([isRead])
+}
+
+// ==================== GEO-FENCING LOCATIONS ====================
+
+model OfficeLocation {
+  id          String   @id @default(uuid())
+  companyId   String
+  name        String
+  latitude    Float
+  longitude   Float
+  radius      Int      @default(100) // in meters
+  address     String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+}
+
+// ==================== REGULARIZATION REQUESTS ====================
+
+model RegularizationRequest {
+  id          String   @id @default(uuid())
+  companyId   String
+  employeeId  String
+
+  date        DateTime @db.Date // Date to regularize
+  checkInTime DateTime?
+  checkOutTime DateTime?
+
+  reason      String
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  approverId  String?
+  rejectionReason String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  approver    User?    @relation("RegularizationApprover", fields: [approverId], references: [id])
+
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([status])
 }

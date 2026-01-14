@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
     Plus,
     Calendar,
@@ -11,13 +11,17 @@ import {
     AlertCircle,
     ChevronLeft,
     ChevronRight,
-    Filter
+    Filter,
+    Check,
+    X
 } from 'lucide-react';
 import { leavesApi } from '@/lib/api/leaves';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { cn, formatDate, getStatusColor } from '@/lib/utils';
 import { toast } from 'sonner';
 import NewLeaveModal from './NewLeaveModal';
+import { DataTable } from '@/components/data-table';
+import { ColumnDef } from '@tanstack/react-table';
 
 export default function LeavesPage() {
     const queryClient = useQueryClient();
@@ -59,6 +63,115 @@ export default function LeavesPage() {
         onError: () => toast.error('Failed to reject leave'),
     });
 
+    const columns: ColumnDef<any>[] = useMemo(() => {
+        const cols: ColumnDef<any>[] = [];
+
+        if (isManager) {
+            cols.push({
+                accessorKey: 'employee',
+                header: 'Employee',
+                cell: ({ row }) => (
+                    <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-full bg-zinc-800 border border-white/5 flex items-center justify-center text-white text-xs font-bold">
+                            {row.original.employee?.firstName?.charAt(0)}{row.original.employee?.lastName?.charAt(0)}
+                        </div>
+                        <span className="font-bold text-white">{row.original.employee?.firstName} {row.original.employee?.lastName}</span>
+                    </div>
+                ),
+            });
+        }
+
+        cols.push(
+            {
+                accessorKey: 'leaveType',
+                header: 'Leave Type',
+                cell: ({ row }) => (
+                    <span
+                        className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border"
+                        style={{
+                            backgroundColor: `${row.original.leaveType?.color}10`,
+                            color: row.original.leaveType?.color,
+                            borderColor: `${row.original.leaveType?.color}20`
+                        }}
+                    >
+                        {row.original.leaveType?.name}
+                    </span>
+                ),
+            },
+            {
+                accessorKey: 'duration',
+                header: 'Duration',
+                cell: ({ row }) => (
+                    <div className="text-sm">
+                        <p className="font-bold text-white">{formatDate(row.original.startDate, 'MMM d')}</p>
+                        <p className="text-xs text-zinc-500">to {formatDate(row.original.endDate, 'MMM d')}</p>
+                    </div>
+                ),
+            },
+            {
+                accessorKey: 'totalDays',
+                header: 'Days',
+                cell: ({ row }) => (
+                    <span className="font-bold text-zinc-300">{row.original.totalDays}</span>
+                ),
+            },
+            {
+                accessorKey: 'reason',
+                header: 'Reason',
+                cell: ({ row }) => (
+                    <p className="text-sm text-zinc-400 max-w-[200px] truncate">{row.original.reason}</p>
+                ),
+            },
+            {
+                accessorKey: 'status',
+                header: 'Status',
+                cell: ({ row }) => (
+                    <span className={cn(
+                        'inline-flex px-3 py-1.5 rounded-lg text-xs font-bold border',
+                        row.original.status === 'APPROVED'
+                            ? 'bg-lime text-black border-lime'
+                            : row.original.status === 'REJECTED'
+                                ? 'bg-red-500/10 text-red-500 border-red-500/20'
+                                : 'bg-zinc-800 text-zinc-400 border-zinc-700'
+                    )}>
+                        {row.original.status}
+                    </span>
+                ),
+            }
+        );
+
+        if (isManager) {
+            cols.push({
+                id: 'actions',
+                header: 'Actions',
+                cell: ({ row }) => {
+                    const leave = row.original;
+                    if (leave.status !== 'PENDING') return null;
+                    return (
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => approveMutation.mutate(leave.id)}
+                                className="p-1.5 rounded-lg hover:bg-lime/20 text-lime transition-colors"
+                                title="Approve"
+                            >
+                                <CheckCircle className="h-4 w-4" />
+                            </button>
+                            <button
+                                onClick={() => rejectMutation.mutate(leave.id)}
+                                className="p-1.5 rounded-lg hover:bg-red-500/20 text-red-500 transition-colors"
+                                title="Reject"
+                            >
+                                <XCircle className="h-4 w-4" />
+                            </button>
+                        </div>
+                    );
+                },
+            });
+        }
+
+        return cols;
+    }, [isManager]); // eslint-disable-line react-hooks/exhaustive-deps
+
     return (
         <div className="space-y-6">
             {/* Page Header */}
@@ -82,21 +195,21 @@ export default function LeavesPage() {
 
             {/* Pending Approvals for Managers */}
             {isManager && pendingLeaves?.length > 0 && (
-                <div className="glass-card rounded-2xl p-6">
-                    <h2 className="font-semibold mb-4 flex items-center gap-2">
-                        <AlertCircle className="h-5 w-5 text-amber-500" />
+                <div className="bg-[#111111] border border-white/5 rounded-[1.5rem] p-6">
+                    <h2 className="font-bold text-white mb-4 flex items-center gap-2">
+                        <AlertCircle className="h-5 w-5 text-lime" />
                         Pending Approvals ({pendingLeaves.length})
                     </h2>
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         {pendingLeaves.slice(0, 5).map((leave: any) => (
-                            <div key={leave.id} className="flex items-center justify-between p-4 bg-muted/50 rounded-xl">
+                            <div key={leave.id} className="flex items-center justify-between p-4 bg-zinc-900/50 rounded-xl border border-white/5">
                                 <div className="flex items-center gap-4">
-                                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white font-medium">
+                                    <div className="h-10 w-10 rounded-full bg-zinc-800 border border-white/5 flex items-center justify-center text-white font-bold">
                                         {leave.employee?.firstName?.charAt(0)}{leave.employee?.lastName?.charAt(0)}
                                     </div>
                                     <div>
-                                        <p className="font-medium">{leave.employee?.firstName} {leave.employee?.lastName}</p>
-                                        <p className="text-sm text-muted-foreground">
+                                        <p className="font-bold text-white">{leave.employee?.firstName} {leave.employee?.lastName}</p>
+                                        <p className="text-xs text-zinc-500 font-medium">
                                             {leave.leaveType?.name} • {formatDate(leave.startDate)} - {formatDate(leave.endDate)}
                                         </p>
                                     </div>
@@ -104,13 +217,13 @@ export default function LeavesPage() {
                                 <div className="flex items-center gap-2">
                                     <button
                                         onClick={() => rejectMutation.mutate(leave.id)}
-                                        className="p-2 rounded-lg hover:bg-red-100 text-red-600 transition-colors"
+                                        className="p-2 rounded-lg hover:bg-red-500/10 text-red-500 transition-colors border border-transparent hover:border-red-500/20"
                                     >
                                         <XCircle className="h-5 w-5" />
                                     </button>
                                     <button
                                         onClick={() => approveMutation.mutate(leave.id)}
-                                        className="p-2 rounded-lg hover:bg-emerald-100 text-emerald-600 transition-colors"
+                                        className="p-2 rounded-lg hover:bg-lime/10 text-lime transition-colors border border-transparent hover:border-lime/20"
                                     >
                                         <CheckCircle className="h-5 w-5" />
                                     </button>
@@ -126,7 +239,7 @@ export default function LeavesPage() {
                 <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="px-4 py-2.5 rounded-xl border bg-background input-focus-ring min-w-[150px]"
+                    className="px-4 py-2.5 rounded-xl border border-white/10 bg-zinc-900 text-white focus:ring-2 focus:ring-lime focus:border-transparent outline-none min-w-[150px]"
                 >
                     <option value="">All Status</option>
                     <option value="PENDING">Pending</option>
@@ -137,120 +250,37 @@ export default function LeavesPage() {
             </div>
 
             {/* Leave Requests Table */}
-            <div className="glass-card rounded-2xl overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead>
-                            <tr className="border-b bg-muted/50">
-                                {isManager && <th className="text-left py-4 px-6 font-medium">Employee</th>}
-                                <th className="text-left py-4 px-6 font-medium">Leave Type</th>
-                                <th className="text-left py-4 px-6 font-medium">Duration</th>
-                                <th className="text-left py-4 px-6 font-medium">Days</th>
-                                <th className="text-left py-4 px-6 font-medium">Reason</th>
-                                <th className="text-left py-4 px-6 font-medium">Status</th>
-                                {isManager && <th className="text-left py-4 px-6 font-medium">Actions</th>}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {isLoading ? (
-                                <tr>
-                                    <td colSpan={isManager ? 7 : 5} className="py-8 text-center text-muted-foreground">
-                                        Loading...
-                                    </td>
-                                </tr>
-                            ) : leaves?.data?.length === 0 ? (
-                                <tr>
-                                    <td colSpan={isManager ? 7 : 5} className="py-8 text-center text-muted-foreground">
-                                        No leave requests found
-                                    </td>
-                                </tr>
-                            ) : (
-                                leaves?.data?.map((leave: any) => (
-                                    <tr key={leave.id} className="border-b table-row-hover">
-                                        {isManager && (
-                                            <td className="py-4 px-6">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white text-sm font-medium">
-                                                        {leave.employee?.firstName?.charAt(0)}{leave.employee?.lastName?.charAt(0)}
-                                                    </div>
-                                                    <span className="font-medium">{leave.employee?.firstName} {leave.employee?.lastName}</span>
-                                                </div>
-                                            </td>
-                                        )}
-                                        <td className="py-4 px-6">
-                                            <span
-                                                className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium"
-                                                style={{ backgroundColor: `${leave.leaveType?.color}20`, color: leave.leaveType?.color }}
-                                            >
-                                                {leave.leaveType?.name}
-                                            </span>
-                                        </td>
-                                        <td className="py-4 px-6">
-                                            <div className="text-sm">
-                                                <p className="font-medium">{formatDate(leave.startDate, 'MMM d')}</p>
-                                                <p className="text-muted-foreground">to {formatDate(leave.endDate, 'MMM d')}</p>
-                                            </div>
-                                        </td>
-                                        <td className="py-4 px-6">
-                                            <span className="font-medium">{leave.totalDays}</span>
-                                        </td>
-                                        <td className="py-4 px-6">
-                                            <p className="text-sm max-w-[200px] truncate">{leave.reason}</p>
-                                        </td>
-                                        <td className="py-4 px-6">
-                                            <span className={cn(
-                                                'inline-flex px-3 py-1 rounded-full text-xs font-medium',
-                                                getStatusColor(leave.status)
-                                            )}>
-                                                {leave.status}
-                                            </span>
-                                        </td>
-                                        {isManager && (
-                                            <td className="py-4 px-6">
-                                                {leave.status === 'PENDING' && (
-                                                    <div className="flex items-center gap-2">
-                                                        <button
-                                                            onClick={() => approveMutation.mutate(leave.id)}
-                                                            className="p-1.5 rounded-lg hover:bg-emerald-100 text-emerald-600 transition-colors"
-                                                        >
-                                                            <CheckCircle className="h-4 w-4" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => rejectMutation.mutate(leave.id)}
-                                                            className="p-1.5 rounded-lg hover:bg-red-100 text-red-600 transition-colors"
-                                                        >
-                                                            <XCircle className="h-4 w-4" />
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </td>
-                                        )}
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
+            {isLoading ? (
+                <div className="bg-[#111111] border border-white/5 rounded-[2rem] p-12 text-center text-zinc-500 animate-pulse">
+                    Loading requests...
                 </div>
-            </div>
+            ) : (
+                <DataTable
+                    columns={columns}
+                    data={leaves?.data || []}
+                    showPagination={false} // Disable built-in pagination as we use server-side pagination controls below
+                    showSearch={false} // Disable search as it is server-side paginated
+                />
+            )}
 
             {/* Pagination */}
             {leaves?.meta && (
-                <div className="flex items-center justify-between glass-card rounded-xl p-4">
-                    <p className="text-sm text-muted-foreground">
-                        Page {page} of {leaves.meta.totalPages}
+                <div className="flex items-center justify-between bg-[#111111] border border-white/5 rounded-[1.5rem] p-4">
+                    <p className="text-sm font-medium text-zinc-500">
+                        Page <span className="text-white">{page}</span> of {leaves.meta.totalPages}
                     </p>
                     <div className="flex items-center gap-2">
                         <button
                             onClick={() => setPage(p => Math.max(1, p - 1))}
                             disabled={page === 1}
-                            className="p-2 hover:bg-muted rounded-lg disabled:opacity-50"
+                            className="p-2 hover:bg-zinc-800 rounded-full transition-colors text-zinc-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
                         >
                             <ChevronLeft className="h-5 w-5" />
                         </button>
                         <button
                             onClick={() => setPage(p => Math.min(leaves.meta.totalPages, p + 1))}
                             disabled={page === leaves.meta.totalPages}
-                            className="p-2 hover:bg-muted rounded-lg disabled:opacity-50"
+                            className="p-2 hover:bg-zinc-800 rounded-full transition-colors text-zinc-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
                         >
                             <ChevronRight className="h-5 w-5" />
                         </button>

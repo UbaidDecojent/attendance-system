@@ -22,6 +22,8 @@ import { CheckOutDto } from './dto/check-out.dto';
 import { ManualAttendanceDto } from './dto/manual-attendance.dto';
 import { AttendanceQueryDto } from './dto/attendance-query.dto';
 import { BulkLockDto } from './dto/bulk-lock.dto';
+import { CreateRegularizationDto } from './dto/create-regularization.dto';
+import { UpdateRegularizationDto } from './dto/update-regularization.dto';
 
 @ApiTags('Attendance')
 @Controller('attendance')
@@ -102,6 +104,55 @@ export class AttendanceController {
     ) {
         query.employeeId = user.employee?.id;
         return this.attendanceService.getHistory(user.companyId, query, user);
+    }
+
+    // ==================== REGULARIZATION ====================
+
+    @Post('regularization')
+    @ApiOperation({ summary: 'Create regularization request' })
+    async createRegularization(
+        @CurrentUser() user: any,
+        @Body() dto: CreateRegularizationDto,
+    ) {
+        return this.attendanceService.createRegularization(
+            user.companyId,
+            user.employee?.id,
+            dto
+        );
+    }
+
+    @Get('regularization')
+    @ApiOperation({ summary: 'Get regularization requests' })
+    @ApiQuery({ name: 'status', required: false })
+    @ApiQuery({ name: 'employeeId', required: false })
+    async getRegularizationRequests(
+        @CurrentUser() user: any,
+        @Query('status') status?: string,
+        @Query('employeeId') employeeId?: string,
+    ) {
+        // If employee, force employeeId
+        const targetEmployeeId = user.role === UserRole.EMPLOYEE ? user.employee?.id : employeeId;
+        return this.attendanceService.getRegularizationRequests(
+            user.companyId,
+            targetEmployeeId,
+            status
+        );
+    }
+
+    @Put('regularization/:id')
+    @Roles(UserRole.COMPANY_ADMIN, UserRole.HR_MANAGER, UserRole.TEAM_MANAGER)
+    @ApiOperation({ summary: 'Approve or Reject regularization request' })
+    async updateRegularization(
+        @Param('id') id: string,
+        @CurrentUser() user: any,
+        @Body() dto: UpdateRegularizationDto,
+    ) {
+        return this.attendanceService.updateRegularization(
+            user.companyId,
+            id,
+            dto,
+            user.id
+        );
     }
 
     // ==================== HR/ADMIN OPERATIONS ====================

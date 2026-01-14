@@ -98,19 +98,19 @@ export default function EmployeesPage() {
             {/* Filters */}
             <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex-1 relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-500" />
                     <input
                         type="text"
                         placeholder="Search employees..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border bg-background input-focus-ring"
+                        className="w-full pl-12 pr-4 py-3 rounded-full border border-white/10 bg-zinc-900 text-white focus:outline-none focus:border-lime focus:ring-1 focus:ring-lime transition-all placeholder:text-zinc-600"
                     />
                 </div>
                 <select
                     value={departmentFilter}
                     onChange={(e) => setDepartmentFilter(e.target.value)}
-                    className="px-4 py-2.5 rounded-xl border bg-background input-focus-ring min-w-[180px]"
+                    className="px-6 py-3 rounded-full border border-white/10 bg-zinc-900 text-white focus:outline-none focus:border-lime focus:ring-1 focus:ring-lime transition-all min-w-[180px]"
                 >
                     <option value="">All Departments</option>
                     {(Array.isArray(departments) ? departments : departments?.items || []).map((dept: any) => (
@@ -120,7 +120,7 @@ export default function EmployeesPage() {
                 <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="px-4 py-2.5 rounded-xl border bg-background input-focus-ring min-w-[150px]"
+                    className="px-6 py-3 rounded-full border border-white/10 bg-zinc-900 text-white focus:outline-none focus:border-lime focus:ring-1 focus:ring-lime transition-all min-w-[150px]"
                 >
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
@@ -132,20 +132,20 @@ export default function EmployeesPage() {
             {isLoading ? (
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {[1, 2, 3, 4, 5, 6].map((i) => (
-                        <div key={i} className="stats-card animate-pulse">
+                        <div key={i} className="bg-[#111111] border border-white/5 rounded-[1.5rem] p-6 animate-pulse">
                             <div className="flex items-center gap-4">
-                                <div className="h-14 w-14 rounded-full bg-muted" />
+                                <div className="h-14 w-14 rounded-full bg-zinc-900" />
                                 <div className="flex-1 space-y-2">
-                                    <div className="h-4 bg-muted rounded w-3/4" />
-                                    <div className="h-3 bg-muted rounded w-1/2" />
+                                    <div className="h-4 bg-zinc-900 rounded w-3/4" />
+                                    <div className="h-3 bg-zinc-900 rounded w-1/2" />
                                 </div>
                             </div>
                         </div>
                     ))}
                 </div>
             ) : items.length === 0 ? (
-                <div className="text-center py-12 glass-card rounded-2xl">
-                    <div className="text-muted-foreground">No employees found</div>
+                <div className="text-center py-12 bg-[#111111] border border-white/5 rounded-[1.5rem]">
+                    <div className="text-zinc-500 font-medium">No employees found matching your criteria.</div>
                 </div>
             ) : (
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -153,50 +153,56 @@ export default function EmployeesPage() {
                         <Link
                             key={employee.id}
                             href={`/dashboard/employees/${employee.id}`}
-                            className="stats-card group hover:border-primary/30"
+                            className="bg-[#111111] border border-white/5 rounded-[1.5rem] p-6 group hover:border-lime/30 transition-all hover:translate-y-[-2px] hover:shadow-2xl hover:shadow-black"
                         >
                             <div className="flex items-start justify-between">
                                 <div className="flex items-center gap-4">
-                                    <div className="h-14 w-14 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white text-lg font-semibold">
+                                    <div className="h-14 w-14 rounded-full bg-zinc-900 border border-white/5 flex items-center justify-center text-white text-lg font-bold group-hover:border-lime/30 group-hover:text-lime transition-all">
                                         {getInitials(employee.firstName, employee.lastName)}
                                     </div>
                                     <div>
-                                        <h3 className="font-semibold group-hover:text-primary transition-colors">
+                                        <h3 className="font-bold text-white group-hover:text-lime transition-colors">
                                             {employee.firstName} {employee.lastName}
                                         </h3>
-                                        <p className="text-sm text-muted-foreground">
+                                        <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider mt-0.5">
                                             {employee.designation?.name || 'No designation'}
                                         </p>
                                         <span className={cn(
-                                            'inline-block px-2 py-0.5 rounded-full text-xs font-medium mt-1',
+                                            'inline-flex items-center mt-2 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest border',
                                             employee.isActive
-                                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                                                : 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400'
+                                                ? 'bg-lime/10 text-lime border-lime/20'
+                                                : 'bg-zinc-800 text-zinc-500 border-zinc-700'
                                         )}>
                                             {employee.isActive ? 'Active' : 'Inactive'}
                                         </span>
                                     </div>
                                 </div>
-                                <button className="p-2 hover:bg-muted rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <MoreVertical className="h-5 w-5 text-muted-foreground" />
+                                <button className="p-2 rounded-full hover:bg-zinc-900 text-zinc-600 hover:text-white transition-colors">
+                                    <MoreVertical className="h-5 w-5" />
                                 </button>
                             </div>
 
-                            <div className="mt-4 pt-4 border-t space-y-2">
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <Mail className="h-4 w-4" />
-                                    <span className="truncate">{employee.email}</span>
+                            <div className="mt-6 pt-6 border-t border-white/5 space-y-3">
+                                <div className="flex items-center gap-3 text-sm text-zinc-400 group-hover:text-zinc-300 transition-colors">
+                                    <div className="p-2 rounded-full bg-zinc-900 text-zinc-500 group-hover:text-lime group-hover:bg-lime/10 transition-colors">
+                                        <Mail className="h-4 w-4" />
+                                    </div>
+                                    <span className="truncate font-medium">{employee.email}</span>
                                 </div>
                                 {employee.department && (
-                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                        <Building2 className="h-4 w-4" />
-                                        <span>{employee.department.name}</span>
+                                    <div className="flex items-center gap-3 text-sm text-zinc-400 group-hover:text-zinc-300 transition-colors">
+                                        <div className="p-2 rounded-full bg-zinc-900 text-zinc-500 group-hover:text-lime group-hover:bg-lime/10 transition-colors">
+                                            <Building2 className="h-4 w-4" />
+                                        </div>
+                                        <span className="font-medium">{employee.department.name}</span>
                                     </div>
                                 )}
                                 {employee.phone && (
-                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                        <Phone className="h-4 w-4" />
-                                        <span>{employee.phone}</span>
+                                    <div className="flex items-center gap-3 text-sm text-zinc-400 group-hover:text-zinc-300 transition-colors">
+                                        <div className="p-2 rounded-full bg-zinc-900 text-zinc-500 group-hover:text-lime group-hover:bg-lime/10 transition-colors">
+                                            <Phone className="h-4 w-4" />
+                                        </div>
+                                        <span className="font-medium">{employee.phone}</span>
                                     </div>
                                 )}
                             </div>
@@ -207,25 +213,25 @@ export default function EmployeesPage() {
 
             {/* Pagination */}
             {meta && (
-                <div className="flex items-center justify-between glass-card rounded-xl p-4">
-                    <p className="text-sm text-muted-foreground">
-                        Showing {((page - 1) * 10) + 1} to {Math.min(page * 10, meta.total)} of {meta.total} employees
+                <div className="flex items-center justify-between bg-[#111111] border border-white/5 rounded-[1.5rem] p-4">
+                    <p className="text-sm font-medium text-zinc-500">
+                        Showing <span className="text-white">{((page - 1) * 10) + 1}</span> to <span className="text-white">{Math.min(page * 10, meta.total)}</span> of <span className="text-white">{meta.total}</span> employees
                     </p>
                     <div className="flex items-center gap-2">
                         <button
                             onClick={() => setPage(p => Math.max(1, p - 1))}
                             disabled={page === 1}
-                            className="p-2 hover:bg-muted rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="p-2 hover:bg-zinc-800 rounded-full transition-colors text-zinc-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
                         >
                             <ChevronLeft className="h-5 w-5" />
                         </button>
-                        <span className="px-3 py-1 bg-muted rounded-lg text-sm font-medium">
+                        <span className="px-4 py-1.5 bg-zinc-900 border border-white/10 rounded-full text-xs font-bold text-white">
                             {page} / {meta.totalPages}
                         </span>
                         <button
                             onClick={() => setPage(p => Math.min(meta.totalPages, p + 1))}
                             disabled={page === meta.totalPages}
-                            className="p-2 hover:bg-muted rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="p-2 hover:bg-zinc-800 rounded-full transition-colors text-zinc-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
                         >
                             <ChevronRight className="h-5 w-5" />
                         </button>

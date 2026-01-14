@@ -102,4 +102,14 @@ export const authApi = {
         const response = await api.post('/auth/2fa/disable', { code });
         return response.data;
     },
+
+    async changePassword(currentPassword: string, newPassword: string) {
+        const response = await api.put('/users/password', { currentPassword, newPassword });
+        return response.data;
+    },
+
+    async updateProfile(data: { firstName?: string; lastName?: string; avatar?: string }) {
+        const response = await api.put('/users/profile', data);
+        return response.data.data;
+    },
 };

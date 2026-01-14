@@ -10,6 +10,8 @@ import { CheckInDto } from './dto/check-in.dto';
 import { CheckOutDto } from './dto/check-out.dto';
 import { ManualAttendanceDto } from './dto/manual-attendance.dto';
 import { AttendanceQueryDto } from './dto/attendance-query.dto';
+import { CreateRegularizationDto } from './dto/create-regularization.dto';
+import { UpdateRegularizationDto, RegularizationStatus } from './dto/update-regularization.dto';
 import {
     startOfDay,
     endOfDay,
@@ -34,12 +36,18 @@ export class AttendanceService {
     // ==================== CHECK IN ====================
 
     async checkIn(employeeId: string, companyId: string, dto: CheckInDto) {
-        // Get employee with shift
+        // Get employee with shift and company settings
         const employee = await this.prisma.employee.findFirst({
             where: { id: employeeId, companyId, isActive: true },
             include: {
                 shift: true,
-                company: { select: { timezone: true, graceTimeMinutes: true } },
+                company: {
+                    select: {
+                        timezone: true,
+                        graceTimeMinutes: true,
+                        requireGpsTracking: true
+                    }
+                },
             },
         });
 
@@ -67,6 +75,54 @@ export class AttendanceService {
             throw new BadRequestException('Already checked in today');
         }
 
+        // Determine attendance type
+        let attendanceType: AttendanceType = dto.type || AttendanceType.OFFICE;
+
+        // Geo-fencing Validation
+        // Fetch office locations
+        const officeLocations = await this.prisma.officeLocation.findMany({
+            where: { companyId, isActive: true }
+        });
+
+        // If company requires GPS or if we want to validate OFFICE attendance
+        if (officeLocations.length > 0) {
+            // If checking in as OFFICE, enforce location check
+            if (attendanceType === AttendanceType.OFFICE) {
+                if (!dto.location || !dto.location.lat || !dto.location.lng) {
+                    // If strict mode is on, fail. Otherwise might warn or allow if configured (here we assume strict for Office)
+                    if (employee.company.requireGpsTracking) {
+                        throw new BadRequestException('GPS location is required for Office check-in.');
+                    }
+                } else {
+                    let isWithinRange = false;
+
+                    for (const loc of officeLocations) {
+                        const distance = this.calculateDistance(
+                            dto.location.lat,
+                            dto.location.lng,
+                            loc.latitude,
+                            loc.longitude
+                        );
+                        if (distance <= loc.radius) {
+                            isWithinRange = true;
+                            break;
+                        }
+                    }
+
+                    if (!isWithinRange) {
+                        // If strict GPS is required OR they selected OFFICE type but aren't there
+                        if (employee.company.requireGpsTracking) {
+                            throw new BadRequestException('You are not within the designated office location radius.');
+                        }
+                        // If strict is false, maybe we allow it? For now, let's strictly enforce if they claim OFFICE.
+                        // Or prompt user to change type to REMOTE.
+                        // For "Copy Zoho", usually it restricts you.
+                        throw new BadRequestException('You are outside the office geofence. Please mark attendance as Remote/Field if allowed.');
+                    }
+                }
+            }
+        }
+
         // Calculate late minutes based on shift
         let lateMinutes = 0;
         if (employee.shift) {
@@ -82,9 +138,6 @@ export class AttendanceService {
             }
         }
 
-        // Determine attendance type
-        let attendanceType: AttendanceType = dto.type || AttendanceType.OFFICE;
-
         // Create or update attendance record
         const record = await this.prisma.attendanceRecord.upsert({
             where: {
@@ -98,24 +151,24 @@ export class AttendanceService {
                 employeeId,
                 date: todayUtc,
                 checkInTime: now,
-                checkInLocation: dto.location ? { lat: dto.location.lat, lng: dto.location.lng } : undefined,
+                checkInLocation: dto.location ? { lat: dto.location.lat, lng: dto.location.lng, address: dto.location.address } : undefined,
                 checkInIp: dto.ipAddress,
                 checkInDevice: dto.deviceInfo,
                 checkInNote: dto.note,
                 status: AttendanceStatus.PRESENT,
                 type: attendanceType,
-                workLocation: dto.workLocation,
+                workLocation: dto.workLocation || (attendanceType === 'OFFICE' ? 'OFFICE' : 'HOME'),
                 lateMinutes,
             },
             update: {
                 checkInTime: now,
-                checkInLocation: dto.location ? { lat: dto.location.lat, lng: dto.location.lng } : undefined,
+                checkInLocation: dto.location ? { lat: dto.location.lat, lng: dto.location.lng, address: dto.location.address } : undefined,
                 checkInIp: dto.ipAddress,
                 checkInDevice: dto.deviceInfo,
                 checkInNote: dto.note,
                 status: AttendanceStatus.PRESENT,
                 type: attendanceType,
-                workLocation: dto.workLocation,
+                workLocation: dto.workLocation || (attendanceType === 'OFFICE' ? 'OFFICE' : 'HOME'),
                 lateMinutes,
             },
         });
@@ -758,5 +811,136 @@ export class AttendanceService {
         }
 
         return count;
+    }
+
+
+    // ==================== REGULARIZATION ====================
+
+    async createRegularization(companyId: string, employeeId: string, dto: CreateRegularizationDto) {
+        const date = new Date(dto.date);
+        const dayStart = startOfDay(date);
+
+        // Check if request already exists
+        const existing = await this.prisma.regularizationRequest.findFirst({
+            where: {
+                companyId,
+                employeeId,
+                date: dayStart,
+                status: 'PENDING'
+            }
+        });
+
+        if (existing) {
+            throw new BadRequestException('A pending request for this date already exists');
+        }
+
+        return this.prisma.regularizationRequest.create({
+            data: {
+                companyId,
+                employeeId,
+                date: dayStart,
+                checkInTime: dto.checkInTime ? new Date(dto.checkInTime) : null,
+                checkOutTime: dto.checkOutTime ? new Date(dto.checkOutTime) : null,
+                reason: dto.reason,
+                status: 'PENDING'
+            }
+        });
+    }
+
+    async getRegularizationRequests(companyId: string, employeeId?: string, status?: string) {
+        return this.prisma.regularizationRequest.findMany({
+            where: {
+                companyId,
+                employeeId,
+                status
+            },
+            include: {
+                employee: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        employeeCode: true
+                    }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+    }
+
+    async updateRegularization(
+        companyId: string,
+        requestId: string,
+        dto: UpdateRegularizationDto,
+        approverId: string
+    ) {
+        const request = await this.prisma.regularizationRequest.findUnique({
+            where: { id: requestId, companyId }
+        });
+
+        if (!request) {
+            throw new NotFoundException('Request not found');
+        }
+
+        if (request.status !== 'PENDING') {
+            throw new BadRequestException('Request is already processed');
+        }
+
+        const updated = await this.prisma.regularizationRequest.update({
+            where: { id: requestId },
+            data: {
+                status: dto.status,
+                approverId,
+                rejectionReason: dto.rejectionReason,
+                updatedAt: new Date()
+            }
+        });
+
+        if (dto.status === RegularizationStatus.APPROVED) {
+            // Update attendance record
+            await this.prisma.attendanceRecord.upsert({
+                where: {
+                    employeeId_date: {
+                        employeeId: request.employeeId,
+                        date: request.date
+                    }
+                },
+                create: {
+                    companyId,
+                    employeeId: request.employeeId,
+                    date: request.date,
+                    checkInTime: request.checkInTime,
+                    checkOutTime: request.checkOutTime,
+                    status: AttendanceStatus.PRESENT,
+                    type: AttendanceType.OFFICE, // Default
+                    isManualEntry: true,
+                    manualEntryReason: `Regularization approved: ${request.reason}`
+                },
+                update: {
+                    checkInTime: request.checkInTime,
+                    checkOutTime: request.checkOutTime,
+                    status: AttendanceStatus.PRESENT,
+                    isManualEntry: true,
+                    manualEntryReason: `Regularization approved: ${request.reason}`
+                }
+            });
+        }
+
+        return updated;
+    }
+
+    private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+        const R = 6371e3; // metres
+        const φ1 = lat1 * Math.PI / 180;
+        const φ2 = lat2 * Math.PI / 180;
+        const Δφ = (lat2 - lat1) * Math.PI / 180;
+        const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+        const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+            Math.cos(φ1) * Math.cos(φ2) *
+            Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        return R * c;
     }
 }

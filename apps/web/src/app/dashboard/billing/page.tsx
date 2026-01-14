@@ -8,6 +8,8 @@ import { useAuthStore } from '@/lib/stores/auth-store';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { toast } from 'sonner';
+import { DataTable } from '@/components/data-table';
+import { ColumnDef } from '@tanstack/react-table';
 
 export default function BillingPage() {
     const router = useRouter();
@@ -56,20 +58,20 @@ export default function BillingPage() {
             </div>
 
             {/* Current Plan */}
-            <div className="glass-card rounded-2xl p-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="bg-[#111111] border border-white/5 rounded-[2rem] p-8">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
                     <div>
-                        <p className="text-sm text-muted-foreground">Current Plan</p>
-                        <h2 className="text-2xl font-bold flex items-center gap-2">
+                        <p className="text-sm font-bold text-zinc-500 uppercase tracking-widest mb-1">Current Plan</p>
+                        <h2 className="text-3xl font-extrabold flex items-center gap-3 text-white">
                             {subscription?.plan?.name || 'Free Trial'}
                             {subscription?.isTrialing && (
-                                <span className="text-sm font-medium px-3 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                                <span className="text-xs font-bold px-3 py-1 rounded-full bg-lime/20 text-lime border border-lime/20 uppercase tracking-wider">
                                     Trial
                                 </span>
                             )}
                         </h2>
                         {subscription?.currentPeriodEnd && (
-                            <p className="text-sm text-muted-foreground mt-1">
+                            <p className="text-sm text-zinc-500 mt-2 font-medium">
                                 {subscription?.isCanceling
                                     ? `Cancels on ${formatDate(subscription.currentPeriodEnd)}`
                                     : `Renews on ${formatDate(subscription.currentPeriodEnd)}`
@@ -77,33 +79,33 @@ export default function BillingPage() {
                             </p>
                         )}
                     </div>
-                    <div className="flex gap-3">
+                    <div className="flex gap-4">
                         {subscription?.isCanceling ? (
-                            <button className="px-5 py-2.5 rounded-xl border font-medium hover:bg-muted transition-colors">
+                            <button className="px-6 py-3 rounded-full border border-white/10 text-white font-bold hover:bg-zinc-900 transition-colors">
                                 Resume Subscription
                             </button>
                         ) : (
-                            <button className="px-5 py-2.5 rounded-xl border font-medium hover:bg-muted transition-colors text-red-600">
+                            <button className="px-6 py-3 rounded-full border border-white/10 text-white font-bold hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/20 transition-colors">
                                 Cancel Subscription
                             </button>
                         )}
-                        <button className="btn-premium px-5 py-2.5">
+                        <button className="bg-lime hover:bg-lime-400 text-black px-6 py-3 rounded-full font-bold transition-all hover:scale-105">
                             Manage Billing
                         </button>
                     </div>
                 </div>
 
                 {/* Usage */}
-                <div className="mt-6 pt-6 border-t">
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium">Employee Usage</span>
-                        <span className="text-sm text-muted-foreground">
+                <div className="mt-8 pt-8 border-t border-white/5">
+                    <div className="flex items-center justify-between mb-3">
+                        <span className="text-sm font-bold text-zinc-400">Employee Usage</span>
+                        <span className="text-sm font-bold text-white">
                             {subscription?.usage?.current || 0} / {subscription?.plan?.maxEmployees === -1 ? '∞' : subscription?.plan?.maxEmployees || 0}
                         </span>
                     </div>
-                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div className="h-3 bg-zinc-900 rounded-full overflow-hidden border border-white/5">
                         <div
-                            className="h-full bg-gradient-to-r from-primary to-purple-600 rounded-full transition-all"
+                            className="h-full bg-lime shadow-[0_0_10px_rgba(204,255,0,0.5)] rounded-full transition-all duration-500"
                             style={{
                                 width: subscription?.plan?.maxEmployees === -1
                                     ? '10%'
@@ -116,60 +118,72 @@ export default function BillingPage() {
 
             {/* Available Plans */}
             <div>
-                <h2 className="text-lg font-semibold mb-4">Available Plans</h2>
+                <h2 className="text-xl font-bold text-white mb-6">Available Plans</h2>
                 <div className="grid md:grid-cols-3 gap-6">
                     {plans?.map((plan: any) => (
                         <div
                             key={plan.id}
                             className={cn(
-                                'stats-card relative',
-                                subscription?.plan?.id === plan.id && 'border-primary ring-2 ring-primary/20'
+                                'bg-[#111111] border rounded-[2rem] p-8 relative transition-all duration-300',
+                                subscription?.plan?.id === plan.id
+                                    ? 'border-lime ring-1 ring-lime/50 shadow-[0_0_30px_rgba(204,255,0,0.1)]'
+                                    : 'border-white/5 hover:border-lime/30'
                             )}
                         >
                             {subscription?.plan?.id === plan.id && (
-                                <div className="absolute -top-3 left-4 px-3 py-1 bg-primary text-white text-xs font-medium rounded-full">
+                                <div className="absolute -top-3 left-8 px-4 py-1 bg-lime text-black text-xs font-bold uppercase tracking-wider rounded-full shadow-lg">
                                     Current Plan
                                 </div>
                             )}
-                            <h3 className="text-lg font-semibold">{plan.name}</h3>
-                            <div className="mt-2 mb-4">
-                                <span className="text-3xl font-bold">{formatCurrency(plan.priceMonthly)}</span>
-                                <span className="text-muted-foreground">/month</span>
+                            <h3 className="text-xl font-bold text-white">{plan.name}</h3>
+                            <div className="mt-4 mb-6">
+                                <span className="text-4xl font-extrabold text-white tracking-tight">{formatCurrency(plan.priceMonthly)}</span>
+                                <span className="text-zinc-500 font-medium">/month</span>
                             </div>
-                            <p className="text-sm text-muted-foreground mb-6">{plan.description}</p>
-                            <ul className="space-y-2 mb-6">
-                                <li className="flex items-center gap-2 text-sm">
-                                    <Check className="h-4 w-4 text-primary" />
+                            <p className="text-sm text-zinc-500 font-medium mb-8 leading-relaxed">{plan.description}</p>
+                            <ul className="space-y-4 mb-8">
+                                <li className="flex items-center gap-3 text-sm font-medium text-zinc-300">
+                                    <div className="h-6 w-6 rounded-full bg-lime/10 flex items-center justify-center">
+                                        <Check className="h-3 w-3 text-lime" />
+                                    </div>
                                     {plan.maxEmployees === -1 ? 'Unlimited' : `Up to ${plan.maxEmployees}`} employees
                                 </li>
                                 {plan.hasGpsTracking && (
-                                    <li className="flex items-center gap-2 text-sm">
-                                        <Check className="h-4 w-4 text-primary" />
+                                    <li className="flex items-center gap-3 text-sm font-medium text-zinc-300">
+                                        <div className="h-6 w-6 rounded-full bg-lime/10 flex items-center justify-center">
+                                            <Check className="h-3 w-3 text-lime" />
+                                        </div>
                                         GPS Tracking
                                     </li>
                                 )}
                                 {plan.hasAdvancedReports && (
-                                    <li className="flex items-center gap-2 text-sm">
-                                        <Check className="h-4 w-4 text-primary" />
+                                    <li className="flex items-center gap-3 text-sm font-medium text-zinc-300">
+                                        <div className="h-6 w-6 rounded-full bg-lime/10 flex items-center justify-center">
+                                            <Check className="h-3 w-3 text-lime" />
+                                        </div>
                                         Advanced Reports
                                     </li>
                                 )}
                                 {plan.hasApiAccess && (
-                                    <li className="flex items-center gap-2 text-sm">
-                                        <Check className="h-4 w-4 text-primary" />
+                                    <li className="flex items-center gap-3 text-sm font-medium text-zinc-300">
+                                        <div className="h-6 w-6 rounded-full bg-lime/10 flex items-center justify-center">
+                                            <Check className="h-3 w-3 text-lime" />
+                                        </div>
                                         API Access
                                     </li>
                                 )}
                                 {plan.hasPrioritySupport && (
-                                    <li className="flex items-center gap-2 text-sm">
-                                        <Check className="h-4 w-4 text-primary" />
+                                    <li className="flex items-center gap-3 text-sm font-medium text-zinc-300">
+                                        <div className="h-6 w-6 rounded-full bg-lime/10 flex items-center justify-center">
+                                            <Check className="h-3 w-3 text-lime" />
+                                        </div>
                                         Priority Support
                                     </li>
                                 )}
                             </ul>
                             {subscription?.plan?.id !== plan.id && (
-                                <button className="w-full py-2.5 rounded-xl border font-medium hover:bg-muted transition-colors">
-                                    Upgrade
+                                <button className="w-full py-3 rounded-xl border border-white/10 font-bold text-white hover:bg-white hover:text-black transition-all">
+                                    Upgrade Plan
                                 </button>
                             )}
                         </div>
@@ -178,63 +192,57 @@ export default function BillingPage() {
             </div>
 
             {/* Invoices */}
-            <div className="glass-card rounded-2xl overflow-hidden">
-                <div className="p-6 border-b flex items-center justify-between">
-                    <h2 className="font-semibold">Invoice History</h2>
-                </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead>
-                            <tr className="border-b bg-muted/50">
-                                <th className="text-left py-4 px-6 font-medium">Invoice</th>
-                                <th className="text-left py-4 px-6 font-medium">Date</th>
-                                <th className="text-left py-4 px-6 font-medium">Amount</th>
-                                <th className="text-left py-4 px-6 font-medium">Status</th>
-                                <th className="text-left py-4 px-6 font-medium">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {invoices?.length === 0 ? (
-                                <tr>
-                                    <td colSpan={5} className="py-8 text-center text-muted-foreground">
-                                        No invoices yet
-                                    </td>
-                                </tr>
-                            ) : (
-                                invoices?.map((invoice: any) => (
-                                    <tr key={invoice.id} className="border-b table-row-hover">
-                                        <td className="py-4 px-6 font-medium">{invoice.number}</td>
-                                        <td className="py-4 px-6">{formatDate(invoice.date)}</td>
-                                        <td className="py-4 px-6">{formatCurrency(invoice.amount)}</td>
-                                        <td className="py-4 px-6">
-                                            <span className={cn(
-                                                'inline-flex px-3 py-1 rounded-full text-xs font-medium',
-                                                invoice.status === 'paid'
-                                                    ? 'bg-emerald-100 text-emerald-700'
-                                                    : 'bg-amber-100 text-amber-700'
-                                            )}>
-                                                {invoice.status}
-                                            </span>
-                                        </td>
-                                        <td className="py-4 px-6">
-                                            {invoice.pdfUrl && (
-                                                <a
-                                                    href={invoice.pdfUrl}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="inline-flex items-center gap-1 text-primary hover:underline text-sm"
-                                                >
-                                                    <FileText className="h-4 w-4" />
-                                                    Download
-                                                </a>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+            <div className="space-y-4">
+                <h2 className="font-bold text-white text-lg">Invoice History</h2>
+                <DataTable
+                    columns={[
+                        {
+                            accessorKey: 'number',
+                            header: 'Invoice',
+                            cell: ({ row }) => <span className="font-bold text-white">{row.original.number}</span>
+                        },
+                        {
+                            accessorKey: 'date',
+                            header: 'Date',
+                            cell: ({ row }) => <span className="text-zinc-400 font-medium">{formatDate(row.original.date)}</span>
+                        },
+                        {
+                            accessorKey: 'amount',
+                            header: 'Amount',
+                            cell: ({ row }) => <span className="text-white font-bold">{formatCurrency(row.original.amount)}</span>
+                        },
+                        {
+                            accessorKey: 'status',
+                            header: 'Status',
+                            cell: ({ row }) => (
+                                <span className={cn(
+                                    'inline-flex px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider',
+                                    row.original.status === 'paid'
+                                        ? 'bg-lime/10 text-lime border border-lime/20'
+                                        : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                                )}>
+                                    {row.original.status}
+                                </span>
+                            )
+                        },
+                        {
+                            id: 'actions',
+                            header: 'Actions',
+                            cell: ({ row }) => row.original.pdfUrl ? (
+                                <a
+                                    href={row.original.pdfUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 text-zinc-400 hover:text-white transition-colors text-sm font-bold"
+                                >
+                                    <FileText className="h-4 w-4" />
+                                    Download
+                                </a>
+                            ) : null
+                        }
+                    ] as ColumnDef<any>[]}
+                    data={invoices || []}
+                />
             </div>
         </div>
     );

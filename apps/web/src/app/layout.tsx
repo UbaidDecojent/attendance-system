@@ -1,12 +1,14 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Outfit } from 'next/font/google';
+// Force layout update
 import './globals.css';
 import { Providers } from '@/components/providers';
 import { Toaster } from 'sonner';
 
-const inter = Inter({
+const outfit = Outfit({
     subsets: ['latin'],
-    variable: '--font-inter',
+    variable: '--font-outfit',
+    weight: ['100', '200', '300', '400', '500', '600', '700', '800', '900'],
 });
 
 export const metadata: Metadata = {
@@ -28,7 +30,7 @@ export default function RootLayout({
 }) {
     return (
         <html lang="en" suppressHydrationWarning>
-            <body className={`${inter.variable} font-sans`}>
+            <body className={`${outfit.variable} font-sans`}>
                 <Providers>
                     {children}
                     <Toaster
