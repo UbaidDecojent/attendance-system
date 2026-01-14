@@ -17,27 +17,27 @@ export interface Shift {
 }
 
 export const shiftsApi = {
-    getAll: async () => {
-        const response = await api.get('/shifts');
+    getAll: async (): Promise<Shift[]> => {
+        const response = await api.get<{ data: Shift[] }>('/shifts');
         return response.data.data;
     },
 
-    create: async (data: Partial<Shift>) => {
-        const response = await api.post('/shifts', data);
+    create: async (data: Partial<Shift>): Promise<Shift> => {
+        const response = await api.post<{ data: Shift }>('/shifts', data);
         return response.data.data;
     },
 
-    update: async (id: string, data: Partial<Shift>) => {
-        const response = await api.put(`/shifts/${id}`, data);
+    update: async (id: string, data: Partial<Shift>): Promise<Shift> => {
+        const response = await api.put<{ data: Shift }>(`/shifts/${id}`, data);
         return response.data.data;
     },
 
-    delete: async (id: string) => {
+    delete: async (id: string): Promise<void> => {
         await api.delete(`/shifts/${id}`);
     },
 
-    assign: async (id: string, employeeIds: string[]) => {
-        const response = await api.post(`/shifts/${id}/assign`, { employeeIds });
+    assign: async (id: string, employeeIds: string[]): Promise<any> => {
+        const response = await api.post<{ data: any }>(`/shifts/${id}/assign`, { employeeIds });
         return response.data.data;
     }
 };
