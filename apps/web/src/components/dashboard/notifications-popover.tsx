@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Bell, Check, Clock, Calendar, AlertCircle, Info, Volume2, VolumeX } from 'lucide-react';
-import { notificationsApi, Notification } from '@/lib/api/notifications';
+import { notificationsApi, type Notification as NotificationItem } from '@/lib/api/notifications';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -60,7 +60,7 @@ export default function NotificationsPopover() {
     });
 
     // Check for new notifications and trigger alerts
-    const checkForNewNotifications = useCallback((notifications: Notification[]) => {
+    const checkForNewNotifications = useCallback((notifications: NotificationItem[]) => {
         if (!notifications?.length) return;
 
         const latestNotification = notifications[0];
@@ -148,7 +148,7 @@ export default function NotificationsPopover() {
         }
     };
 
-    const handleNotificationClick = (notification: Notification) => {
+    const handleNotificationClick = (notification: NotificationItem) => {
         setIsOpen(false);
         if (!notification.isRead) {
             readMutation.mutate(notification.id);
@@ -227,7 +227,7 @@ export default function NotificationsPopover() {
                             </div>
                         ) : (
                             <div className="divide-y divide-white/5">
-                                {notifications.map((notification: Notification) => (
+                                {notifications.map((notification: NotificationItem) => (
                                     <div
                                         key={notification.id}
                                         className={cn(
