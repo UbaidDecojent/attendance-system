@@ -238,11 +238,23 @@ export class AttendanceService {
 
         let overtimeMinutes = 0;
         let earlyLeaveMinutes = 0;
+        let lateMinutes = record.lateMinutes; // Start with existing lateness
 
         if (employee.shift) {
+            const [startHour, startMinute] = employee.shift.startTime.split(':').map(Number);
             const [endHour, endMinute] = employee.shift.endTime.split(':').map(Number);
             const shiftEnd = new Date(zonedNow);
             shiftEnd.setHours(endHour, endMinute, 0, 0);
+
+            // Calculate expected shift duration (e.g. 9 hours)
+            // Handle day crossing if needed (assuming same day for now)
+            let shiftDuration = (endHour * 60 + endMinute) - (startHour * 60 + startMinute);
+            if (shiftDuration < 0) shiftDuration += 24 * 60;
+
+            // RULE: If they worked the full shift hours (or more), forgive lateness
+            if (totalWorkMinutes >= shiftDuration) {
+                lateMinutes = 0;
+            }
 
             const standardMinutes = employee.company.overtimeThresholdMinutes || 480;
 
@@ -250,7 +262,7 @@ export class AttendanceService {
                 overtimeMinutes = totalWorkMinutes - standardMinutes;
             }
 
-            if (zonedNow < shiftEnd) {
+            if (zonedNow < shiftEnd && totalWorkMinutes < shiftDuration) {
                 earlyLeaveMinutes = differenceInMinutes(shiftEnd, zonedNow);
             }
         }
@@ -259,6 +271,10 @@ export class AttendanceService {
         let status = record.status;
         if (employee.shift?.halfDayThreshold && totalWorkMinutes < employee.shift.halfDayThreshold) {
             status = AttendanceStatus.HALF_DAY;
+        }
+        // If lateness forgiven or full day worked, ensure status is PRESENT (unless it was something else specific? usually PRESENT)
+        if (lateMinutes === 0 && status === AttendanceStatus.HALF_DAY && totalWorkMinutes >= (employee.shift?.halfDayThreshold || 0) * 2) {
+            status = AttendanceStatus.PRESENT;
         }
 
         const updatedRecord = await this.prisma.attendanceRecord.update({
@@ -272,6 +288,7 @@ export class AttendanceService {
                 totalWorkMinutes,
                 overtimeMinutes,
                 earlyLeaveMinutes,
+                lateMinutes, // Update with forgiven value
                 status,
             },
         });

@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect, useRef } from 'react';
-import { Settings, User, Bell, Shield, CreditCard, Building2, MapPin, Edit3 } from 'lucide-react';
+import { Settings, User, Bell, Shield, CreditCard, Building2, MapPin, Edit3, Clock } from 'lucide-react';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api/client';
@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { authApi } from '@/lib/api/auth';
 import SecuritySettings from '@/components/dashboard/security-settings';
 import NotificationSettings from '@/components/dashboard/notification-settings';
+import ShiftSettings from '@/components/dashboard/shift-settings';
 
 export default function SettingsPage() {
     const [activeTab, setActiveTab] = useState('profile');
@@ -69,6 +70,7 @@ export default function SettingsPage() {
         { id: 'security', label: 'Security', icon: Shield },
         { id: 'notifications', label: 'Notifications', icon: Bell },
         { id: 'company', label: 'Company', icon: Building2 },
+        { id: 'shifts', label: 'Shifts', icon: Clock },
         { id: 'office', label: 'Office Locations', icon: MapPin },
     ];
 
@@ -265,6 +267,12 @@ export default function SettingsPage() {
                                     </button>
                                 )}
                             </div>
+                        )
+                    }
+
+                    {
+                        activeTab === 'shifts' && (
+                            <ShiftSettings />
                         )
                     }
 
