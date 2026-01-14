@@ -76,16 +76,25 @@ export default function ShiftSettings() {
             return;
         }
 
-        // Generate code if missing
-        const dataToSubmit = {
-            ...formData,
-            code: formData.code || formData.name?.toUpperCase().replace(/\s+/g, '_').substring(0, 10)
+        // Clean payload - Only send updatable fields
+        const payload = {
+            name: formData.name,
+            code: formData.code || formData.name?.toUpperCase().replace(/\s+/g, '_').substring(0, 10),
+            description: formData.description,
+            startTime: formData.startTime,
+            endTime: formData.endTime,
+            breakDuration: formData.breakDuration,
+            graceTimeIn: formData.graceTimeIn,
+            graceTimeOut: formData.graceTimeOut,
+            workingDays: formData.workingDays,
+            isDefault: formData.isDefault,
+            isActive: formData.isActive
         };
 
         if (editingId) {
-            updateMutation.mutate({ id: editingId, data: dataToSubmit });
+            updateMutation.mutate({ id: editingId, data: payload });
         } else {
-            createMutation.mutate(dataToSubmit);
+            createMutation.mutate(payload);
         }
     };
 
