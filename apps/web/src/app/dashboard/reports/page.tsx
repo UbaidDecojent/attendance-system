@@ -24,7 +24,8 @@ import {
     Pie,
     Cell,
     LineChart,
-    Line
+    Line,
+    Legend
 } from 'recharts';
 import api from '@/lib/api/client';
 import { useAuthStore } from '@/lib/stores/auth-store';
@@ -275,11 +276,10 @@ export default function ReportsPage() {
                                             cx="50%"
                                             cy="50%"
                                             innerRadius={60}
-                                            outerRadius={100}
+                                            outerRadius={90}
                                             stroke="#111"
                                             strokeWidth={2}
                                             paddingAngle={5}
-                                            label={({ name }) => name}
                                         >
                                             {(departmentReport?.departments || []).map((_: any, index: number) => (
                                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -292,6 +292,12 @@ export default function ReportsPage() {
                                                 borderRadius: '12px',
                                                 color: '#fff'
                                             }}
+                                        />
+                                        <Legend
+                                            verticalAlign="bottom"
+                                            height={36}
+                                            iconType="circle"
+                                            formatter={(value) => <span style={{ color: '#dadada', fontSize: 12, fontWeight: 500 }}>{value}</span>}
                                         />
                                     </PieChart>
                                 </ResponsiveContainer>
