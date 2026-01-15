@@ -12306,3 +12306,204 @@
 {"context":"Bootstrap","level":"info","message":"📚 API Documentation: http://localhost:3001/api/docs","service":"attendance-api","timestamp":"2026-01-15 11:58:41"}
 {"duration":"2285ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 11:58:51","url":"/api/v1/notifications?page=1&limit=10","userId":"d77bb32f-fadd-407d-b3aa-e15155b534cb"}
 {"duration":"662ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 11:58:55","url":"/api/v1/notifications?page=1&limit=10","userId":"7059dc01-447f-4d2b-94a5-ff53f8ab82fe"}
+{"context":"EmailService","level":"info","message":"Email service initialized with Resend (from: onboarding@resend.dev)","service":"attendance-api","timestamp":"2026-01-15 11:59:05"}
+{"context":"NestFactory","level":"info","message":"Starting Nest application...","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"InstanceLoader","level":"info","message":"PrismaModule dependencies initialized","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"InstanceLoader","level":"info","message":"PassportModule dependencies initialized","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"InstanceLoader","level":"info","message":"DesignationsModule dependencies initialized","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"InstanceLoader","level":"info","message":"ConfigHostModule dependencies initialized","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"InstanceLoader","level":"info","message":"AuditModule dependencies initialized","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"InstanceLoader","level":"info","message":"DiscoveryModule dependencies initialized","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"InstanceLoader","level":"info","message":"ConfigModule dependencies initialized","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"InstanceLoader","level":"info","message":"ConfigModule dependencies initialized","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"InstanceLoader","level":"info","message":"ScheduleModule dependencies initialized","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"InstanceLoader","level":"info","message":"LoggerModule dependencies initialized","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"InstanceLoader","level":"info","message":"JwtModule dependencies initialized","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"InstanceLoader","level":"info","message":"ThrottlerModule dependencies initialized","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"InstanceLoader","level":"info","message":"CompaniesModule dependencies initialized","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"InstanceLoader","level":"info","message":"DepartmentsModule dependencies initialized","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"InstanceLoader","level":"info","message":"ShiftsModule dependencies initialized","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"InstanceLoader","level":"info","message":"NotificationsModule dependencies initialized","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"InstanceLoader","level":"info","message":"HolidaysModule dependencies initialized","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"InstanceLoader","level":"info","message":"ReportsModule dependencies initialized","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"InstanceLoader","level":"info","message":"AppModule dependencies initialized","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"InstanceLoader","level":"info","message":"WebhooksModule dependencies initialized","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"InstanceLoader","level":"info","message":"UsersModule dependencies initialized","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"InstanceLoader","level":"info","message":"AttendanceModule dependencies initialized","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"InstanceLoader","level":"info","message":"LeavesModule dependencies initialized","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"InstanceLoader","level":"info","message":"SubscriptionModule dependencies initialized","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"InstanceLoader","level":"info","message":"EmployeesModule dependencies initialized","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"InstanceLoader","level":"info","message":"AuthModule dependencies initialized","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RoutesResolver","level":"info","message":"AuthController {/api/auth} (version: 1):","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/auth/register, POST} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/auth/login, POST} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/auth/login/2fa, POST} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/auth/refresh, POST} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/auth/logout, POST} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/auth/logout/all, POST} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/auth/verify-email, POST} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/auth/resend-verification, POST} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/auth/forgot-password, POST} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/auth/reset-password, POST} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/auth/2fa/enable, POST} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/auth/2fa/confirm, POST} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/auth/2fa/disable, POST} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/auth/me, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RoutesResolver","level":"info","message":"UsersController {/api/users} (version: 1):","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/users/profile, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/users/profile, PUT} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/users/password, PUT} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/users, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/users/:id, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RoutesResolver","level":"info","message":"CompaniesController {/api/company} (version: 1):","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/company, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/company, PUT} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/company/settings, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/company/settings, PUT} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/company/dashboard, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/company/locations, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/company/locations, POST} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/company/locations/:id, PUT} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RoutesResolver","level":"info","message":"EmployeesController {/api/employees} (version: 1):","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/employees, POST} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/employees, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/employees/stats, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/employees/:id, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/employees/:id, PUT} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/employees/:id, DELETE} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/employees/:id/reactivate, PUT} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/employees/:id/leave-balances, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/employees/:id/leave-balances, PUT} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/employees/:id/attendance, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RoutesResolver","level":"info","message":"DepartmentsController {/api/departments} (version: 1):","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/departments, POST} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/departments, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/departments/:id, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/departments/:id, PUT} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/departments/:id, DELETE} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RoutesResolver","level":"info","message":"ShiftsController {/api/shifts} (version: 1):","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/shifts, POST} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/shifts, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/shifts/:id, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/shifts/:id, PUT} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/shifts/:id, DELETE} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/shifts/:id/assign, POST} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RoutesResolver","level":"info","message":"AttendanceController {/api/attendance} (version: 1):","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/attendance/cron/late-check-ins, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/attendance/check-in, POST} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/attendance/check-out, POST} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/attendance/break/start, POST} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/attendance/break/end, POST} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/attendance/today, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/attendance/my-history, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/attendance/regularization, POST} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/attendance/regularization, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/attendance/regularization/:id, PUT} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/attendance/history, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/attendance/manual, POST} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/attendance/:id/approve, PUT} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/attendance/:id/lock, PUT} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/attendance/bulk-lock, POST} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/attendance/dashboard, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RoutesResolver","level":"info","message":"NotificationsController {/api/notifications} (version: 1):","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/notifications, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/notifications/read-all, PUT} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/notifications/:id/read, PUT} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RoutesResolver","level":"info","message":"LeavesController {/api/leaves} (version: 1):","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/leaves, POST} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/leaves/types, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/leaves, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/leaves/pending, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/leaves/calendar, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/leaves/:id, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/leaves/:id/approve, PUT} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/leaves/:id/reject, PUT} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/leaves/:id/cancel, PUT} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RoutesResolver","level":"info","message":"HolidaysController {/api/holidays} (version: 1):","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/holidays, POST} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/holidays, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/holidays/:id, PUT} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/holidays/:id, DELETE} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RoutesResolver","level":"info","message":"ReportsController {/api/reports} (version: 1):","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/reports/attendance, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/reports/leave, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/reports/department, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/reports/payroll, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/reports/analytics, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RoutesResolver","level":"info","message":"SubscriptionController {/api/subscription} (version: 1):","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/subscription/plans, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/subscription, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/subscription/checkout, POST} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/subscription/portal, POST} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/subscription/change, PUT} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/subscription/cancel, POST} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/subscription/resume, POST} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/subscription/invoices, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/subscription/payments, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/subscription/limits, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/subscription/feature, GET} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RoutesResolver","level":"info","message":"WebhooksController {/api/webhooks} (version: 1):","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"RouterExplorer","level":"info","message":"Mapped {/api/webhooks/stripe, POST} (version: 1) route","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"NestApplication","level":"info","message":"Nest application successfully started","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"Bootstrap","level":"info","message":"🚀 Application is running on: http://localhost:3001/api","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"context":"Bootstrap","level":"info","message":"📚 API Documentation: http://localhost:3001/api/docs","service":"attendance-api","timestamp":"2026-01-15 11:59:08"}
+{"duration":"2239ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 11:59:12","url":"/api/v1/notifications?page=1&limit=10","userId":"d77bb32f-fadd-407d-b3aa-e15155b534cb"}
+{"duration":"426ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 11:59:13","url":"/api/v1/notifications?page=1&limit=10","userId":"7059dc01-447f-4d2b-94a5-ff53f8ab82fe"}
+{"duration":"824ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 11:59:30","url":"/api/v1/notifications?page=1&limit=10","userId":"7059dc01-447f-4d2b-94a5-ff53f8ab82fe"}
+{"duration":"406ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 11:59:31","url":"/api/v1/notifications?page=1&limit=10","userId":"d77bb32f-fadd-407d-b3aa-e15155b534cb"}
+{"duration":"599ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 11:59:47","url":"/api/v1/notifications?page=1&limit=10","userId":"7059dc01-447f-4d2b-94a5-ff53f8ab82fe"}
+{"duration":"402ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 11:59:49","url":"/api/v1/notifications?page=1&limit=10","userId":"d77bb32f-fadd-407d-b3aa-e15155b534cb"}
+{"context":"AttendanceScheduler","level":"info","message":"Running Late Check-in Scheduler...","service":"attendance-api","timestamp":"2026-01-15 12:00:00"}
+{"duration":"601ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:00:03","url":"/api/v1/notifications?page=1&limit=10","userId":"7059dc01-447f-4d2b-94a5-ff53f8ab82fe"}
+{"duration":"401ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:00:06","url":"/api/v1/notifications?page=1&limit=10","userId":"d77bb32f-fadd-407d-b3aa-e15155b534cb"}
+{"duration":"599ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:00:19","url":"/api/v1/notifications?page=1&limit=10","userId":"7059dc01-447f-4d2b-94a5-ff53f8ab82fe"}
+{"duration":"415ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:00:23","url":"/api/v1/notifications?page=1&limit=10","userId":"d77bb32f-fadd-407d-b3aa-e15155b534cb"}
+{"duration":"598ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:00:35","url":"/api/v1/notifications?page=1&limit=10","userId":"7059dc01-447f-4d2b-94a5-ff53f8ab82fe"}
+{"duration":"403ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:00:40","url":"/api/v1/notifications?page=1&limit=10","userId":"d77bb32f-fadd-407d-b3aa-e15155b534cb"}
+{"duration":"598ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:00:52","url":"/api/v1/notifications?page=1&limit=10","userId":"7059dc01-447f-4d2b-94a5-ff53f8ab82fe"}
+{"duration":"401ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:00:57","url":"/api/v1/notifications?page=1&limit=10","userId":"d77bb32f-fadd-407d-b3aa-e15155b534cb"}
+{"duration":"598ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:01:08","url":"/api/v1/notifications?page=1&limit=10","userId":"7059dc01-447f-4d2b-94a5-ff53f8ab82fe"}
+{"duration":"402ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:01:14","url":"/api/v1/notifications?page=1&limit=10","userId":"d77bb32f-fadd-407d-b3aa-e15155b534cb"}
+{"duration":"602ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:01:24","url":"/api/v1/notifications?page=1&limit=10","userId":"7059dc01-447f-4d2b-94a5-ff53f8ab82fe"}
+{"duration":"400ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:01:31","url":"/api/v1/notifications?page=1&limit=10","userId":"d77bb32f-fadd-407d-b3aa-e15155b534cb"}
+{"duration":"598ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:01:40","url":"/api/v1/notifications?page=1&limit=10","userId":"7059dc01-447f-4d2b-94a5-ff53f8ab82fe"}
+{"duration":"404ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:01:48","url":"/api/v1/notifications?page=1&limit=10","userId":"d77bb32f-fadd-407d-b3aa-e15155b534cb"}
+{"duration":"601ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:01:56","url":"/api/v1/notifications?page=1&limit=10","userId":"7059dc01-447f-4d2b-94a5-ff53f8ab82fe"}
+{"duration":"400ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:02:05","url":"/api/v1/notifications?page=1&limit=10","userId":"d77bb32f-fadd-407d-b3aa-e15155b534cb"}
+{"duration":"599ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:02:13","url":"/api/v1/notifications?page=1&limit=10","userId":"7059dc01-447f-4d2b-94a5-ff53f8ab82fe"}
+{"duration":"412ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:02:23","url":"/api/v1/notifications?page=1&limit=10","userId":"d77bb32f-fadd-407d-b3aa-e15155b534cb"}
+{"duration":"600ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:02:29","url":"/api/v1/notifications?page=1&limit=10","userId":"7059dc01-447f-4d2b-94a5-ff53f8ab82fe"}
+{"duration":"403ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:02:41","url":"/api/v1/notifications?page=1&limit=10","userId":"d77bb32f-fadd-407d-b3aa-e15155b534cb"}
+{"duration":"600ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:02:45","url":"/api/v1/notifications?page=1&limit=10","userId":"7059dc01-447f-4d2b-94a5-ff53f8ab82fe"}
+{"duration":"401ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:02:59","url":"/api/v1/notifications?page=1&limit=10","userId":"d77bb32f-fadd-407d-b3aa-e15155b534cb"}
+{"duration":"598ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:03:01","url":"/api/v1/notifications?page=1&limit=10","userId":"7059dc01-447f-4d2b-94a5-ff53f8ab82fe"}
+{"duration":"597ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:03:17","url":"/api/v1/notifications?page=1&limit=10","userId":"d77bb32f-fadd-407d-b3aa-e15155b534cb"}
+{"duration":"2288ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:03:19","url":"/api/v1/notifications?page=1&limit=10","userId":"7059dc01-447f-4d2b-94a5-ff53f8ab82fe"}
+{"duration":"622ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:03:35","url":"/api/v1/notifications?page=1&limit=10","userId":"d77bb32f-fadd-407d-b3aa-e15155b534cb"}
+{"duration":"607ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:03:35","url":"/api/v1/notifications?page=1&limit=10","userId":"7059dc01-447f-4d2b-94a5-ff53f8ab82fe"}
+{"duration":"597ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:03:52","url":"/api/v1/notifications?page=1&limit=10","userId":"7059dc01-447f-4d2b-94a5-ff53f8ab82fe"}
+{"duration":"402ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:03:53","url":"/api/v1/notifications?page=1&limit=10","userId":"d77bb32f-fadd-407d-b3aa-e15155b534cb"}
+{"duration":"2336ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:04:10","url":"/api/v1/notifications?page=1&limit=10","userId":"7059dc01-447f-4d2b-94a5-ff53f8ab82fe"}
+{"duration":"2777ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:04:15","url":"/api/v1/notifications?page=1&limit=10","userId":"d77bb32f-fadd-407d-b3aa-e15155b534cb"}
+{"duration":"632ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:04:26","url":"/api/v1/notifications?page=1&limit=10","userId":"7059dc01-447f-4d2b-94a5-ff53f8ab82fe"}
+{"duration":"626ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:04:33","url":"/api/v1/notifications?page=1&limit=10","userId":"d77bb32f-fadd-407d-b3aa-e15155b534cb"}
+{"duration":"641ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:04:42","url":"/api/v1/notifications?page=1&limit=10","userId":"7059dc01-447f-4d2b-94a5-ff53f8ab82fe"}
+{"duration":"620ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:04:51","url":"/api/v1/notifications?page=1&limit=10","userId":"d77bb32f-fadd-407d-b3aa-e15155b534cb"}
+{"duration":"632ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:04:58","url":"/api/v1/notifications?page=1&limit=10","userId":"7059dc01-447f-4d2b-94a5-ff53f8ab82fe"}
+{"duration":"612ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:05:09","url":"/api/v1/notifications?page=1&limit=10","userId":"d77bb32f-fadd-407d-b3aa-e15155b534cb"}
+{"duration":"633ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:05:14","url":"/api/v1/notifications?page=1&limit=10","userId":"7059dc01-447f-4d2b-94a5-ff53f8ab82fe"}
+{"duration":"4799ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:05:20","url":"/api/v1/attendance/history?startDate=2026-01-01&endDate=2026-01-31&limit=100","userId":"d77bb32f-fadd-407d-b3aa-e15155b534cb"}
+{"duration":"622ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:05:28","url":"/api/v1/notifications?page=1&limit=10","userId":"d77bb32f-fadd-407d-b3aa-e15155b534cb"}
+{"duration":"644ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:05:30","url":"/api/v1/notifications?page=1&limit=10","userId":"7059dc01-447f-4d2b-94a5-ff53f8ab82fe"}
+{"duration":"640ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:05:45","url":"/api/v1/notifications?page=1&limit=10","userId":"d77bb32f-fadd-407d-b3aa-e15155b534cb"}
+{"duration":"823ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:05:46","url":"/api/v1/notifications?page=1&limit=10","userId":"7059dc01-447f-4d2b-94a5-ff53f8ab82fe"}
+{"duration":"617ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:06:03","url":"/api/v1/notifications?page=1&limit=10","userId":"7059dc01-447f-4d2b-94a5-ff53f8ab82fe"}
+{"duration":"1051ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:06:04","url":"/api/v1/notifications?page=1&limit=10","userId":"d77bb32f-fadd-407d-b3aa-e15155b534cb"}
+{"duration":"638ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:06:19","url":"/api/v1/notifications?page=1&limit=10","userId":"7059dc01-447f-4d2b-94a5-ff53f8ab82fe"}
+{"duration":"424ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:06:21","url":"/api/v1/notifications?page=1&limit=10","userId":"d77bb32f-fadd-407d-b3aa-e15155b534cb"}
+{"duration":"658ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:06:36","url":"/api/v1/notifications?page=1&limit=10","userId":"7059dc01-447f-4d2b-94a5-ff53f8ab82fe"}
+{"duration":"440ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:06:38","url":"/api/v1/notifications?page=1&limit=10","userId":"d77bb32f-fadd-407d-b3aa-e15155b534cb"}
+{"duration":"634ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:06:52","url":"/api/v1/notifications?page=1&limit=10","userId":"7059dc01-447f-4d2b-94a5-ff53f8ab82fe"}
+{"duration":"424ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:06:56","url":"/api/v1/notifications?page=1&limit=10","userId":"d77bb32f-fadd-407d-b3aa-e15155b534cb"}
+{"duration":"637ms","level":"info","message":"HTTP Request","method":"GET","service":"attendance-api","statusCode":200,"timestamp":"2026-01-15 12:07:08","url":"/api/v1/notifications?page=1&limit=10","userId":"7059dc01-447f-4d2b-94a5-ff53f8ab82fe"}
+{"context":"EmailService","level":"info","message":"Email service initialized with Resend (from: onboarding@resend.dev)","service":"attendance-api","timestamp":"2026-01-15 12:07:23"}

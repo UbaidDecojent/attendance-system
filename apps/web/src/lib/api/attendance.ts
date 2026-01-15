@@ -28,10 +28,11 @@ export const attendanceApi = {
 
     async getMyHistory(params?: { startDate?: string; endDate?: string; page?: number; limit?: number }) {
         const response = await api.get('/attendance/my-history', { params });
+        const payload = response.data.data;
         return {
-            items: response.data.data,
-            meta: response.data.meta,
-            summary: response.data.summary
+            items: payload?.items || [],
+            meta: payload?.meta || {},
+            summary: payload?.summary || {}
         };
     },
 
@@ -45,10 +46,11 @@ export const attendanceApi = {
         limit?: number;
     }) {
         const response = await api.get('/attendance/history', { params });
+        const payload = response.data.data;
         return {
-            items: response.data.data,
-            meta: response.data.meta,
-            summary: response.data.summary
+            items: payload?.items || [],
+            meta: payload?.meta || {},
+            summary: payload?.summary || {}
         };
     },
 
