@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { attendanceApi } from '@/lib/api/attendance';
 import { formatDate, formatTime, cn } from '@/lib/utils';
-import { format, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, addMonths, subMonths, differenceInCalendarDays } from 'date-fns';
 import { DataTable } from '@/components/data-table';
 import { ColumnDef } from '@tanstack/react-table';
 
@@ -32,6 +32,13 @@ export default function AttendancePage() {
             ? attendanceApi.getHistory({ startDate, endDate, limit: 100 })
             : attendanceApi.getMyHistory({ startDate, endDate, limit: 100 }),
     });
+
+    const filteredHistoryItems = useMemo(() => {
+        if (!history?.items) return [];
+        return history.items
+            .filter((item: any) => differenceInCalendarDays(new Date(item.date), new Date()) <= 0)
+            .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }, [history]);
 
     const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
     const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
@@ -221,7 +228,7 @@ export default function AttendancePage() {
                     Loading records...
                 </div>
             ) : (
-                <DataTable columns={columns} data={history?.items || []} />
+                <DataTable columns={columns} data={filteredHistoryItems} />
             )}
 
             {/* Location Modal */}
