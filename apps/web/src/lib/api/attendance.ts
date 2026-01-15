@@ -28,11 +28,12 @@ export const attendanceApi = {
 
     async getMyHistory(params?: { startDate?: string; endDate?: string; page?: number; limit?: number }) {
         const response = await api.get('/attendance/my-history', { params });
-        const payload = response.data.data;
+        // Restore verified working path for items
         return {
-            items: payload?.items || [],
-            meta: payload?.meta || {},
-            summary: payload?.summary || {}
+            items: response.data.data,
+            meta: response.data.meta,
+            // Try explicit path, check if summary is sibling to data
+            summary: response.data.summary || { present: 0, absent: 0, late: 0, onLeave: 0 }
         };
     },
 
@@ -46,11 +47,10 @@ export const attendanceApi = {
         limit?: number;
     }) {
         const response = await api.get('/attendance/history', { params });
-        const payload = response.data.data;
         return {
-            items: payload?.items || [],
-            meta: payload?.meta || {},
-            summary: payload?.summary || {}
+            items: response.data.data,
+            meta: response.data.meta,
+            summary: response.data.summary || { present: 0, absent: 0, late: 0, onLeave: 0 }
         };
     },
 
