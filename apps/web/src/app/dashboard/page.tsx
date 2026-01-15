@@ -139,12 +139,12 @@ export default function DashboardPage() {
             }
 
             console.log("📍 Starting location fetch: High Accuracy (GPS)");
-            // Attempt 1: High Accuracy (GPS) - 20s timeout
+            // Attempt 1: High Accuracy (GPS) - 30s timeout
             // Using watchPosition wrapper which is often more reliable
             const position = await getPosition({
                 enableHighAccuracy: true,
-                timeout: 20000,
-                maximumAge: 10000 // Accept positions up to 10s old
+                timeout: 30000,
+                maximumAge: 0 // Force fresh reading
             });
             console.log("✅ High Accuracy Success:", position.coords);
             const { latitude, longitude } = position.coords;
