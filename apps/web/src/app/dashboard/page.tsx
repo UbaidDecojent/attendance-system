@@ -515,7 +515,7 @@ export default function DashboardPage() {
                                         <button
                                             onClick={() => handleCheckIn()}
                                             disabled={checkingIn}
-                                            className="flex-1 bg-lime hover:bg-lime-400 text-black font-extrabold text-lg px-8 py-4 rounded-[1.5rem] transition-all flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(204,255,0,0.2)] hover:shadow-[0_0_50px_rgba(204,255,0,0.4)] disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="w-full sm:w-auto bg-lime hover:bg-lime-400 text-black font-extrabold text-lg px-8 py-4 rounded-[1.5rem] transition-all flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(204,255,0,0.2)] hover:shadow-[0_0_50px_rgba(204,255,0,0.4)] disabled:opacity-50 disabled:cursor-not-allowed min-w-[200px]"
                                         >
                                             <PlayCircle className="h-6 w-6" />
                                             {checkingIn ? 'Clocking In...' : 'Start Your Day'}
@@ -524,13 +524,13 @@ export default function DashboardPage() {
                                         <button
                                             onClick={handleCheckOut}
                                             disabled={checkingOut}
-                                            className="flex-1 bg-white hover:bg-zinc-200 text-black font-extrabold text-lg px-8 py-4 rounded-[1.5rem] transition-all flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(255,255,255,0.1)] disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="w-full sm:w-auto bg-white hover:bg-zinc-200 text-black font-extrabold text-lg px-8 py-4 rounded-[1.5rem] transition-all flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(255,255,255,0.1)] disabled:opacity-50 disabled:cursor-not-allowed min-w-[200px]"
                                         >
                                             <PauseCircle className="h-6 w-6" />
                                             {checkingOut ? 'Clocking Out...' : 'Check Out'}
                                         </button>
                                     ) : (
-                                        <div className="flex-1 bg-zinc-900 text-zinc-400 font-bold text-lg px-8 py-4 rounded-[1.5rem] flex items-center justify-center gap-3 border border-white/5">
+                                        <div className="w-full sm:w-auto bg-zinc-900 text-zinc-400 font-bold text-lg px-8 py-4 rounded-[1.5rem] flex items-center justify-center gap-3 border border-white/5 min-w-[200px]">
                                             <CheckCircle className="h-6 w-6 text-lime" />
                                             Attendance Recorded
                                         </div>
