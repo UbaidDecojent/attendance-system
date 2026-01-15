@@ -752,10 +752,10 @@ export default function DashboardPage() {
                                         <td className="py-4 pl-4">
                                             <div className="flex items-center gap-3">
                                                 <div className="h-8 w-8 rounded-full bg-zinc-800 flex items-center justify-center text-xs font-bold text-zinc-400">
-                                                    {record.user?.firstName?.[0] || 'U'}
+                                                    {record.employee?.firstName?.[0] || 'U'}
                                                 </div>
                                                 <span className="text-sm font-medium text-white">
-                                                    {record.user?.firstName || 'User'} {record.user?.lastName || ''}
+                                                    {record.employee?.firstName || 'User'} {record.employee?.lastName || ''}
                                                 </span>
                                             </div>
                                         </td>
