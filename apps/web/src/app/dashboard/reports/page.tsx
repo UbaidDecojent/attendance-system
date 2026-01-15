@@ -159,28 +159,7 @@ export default function ReportsPage() {
                 </button>
             </div>
 
-            {/* Report Type Tabs */}
-            <div className="flex gap-2 flex-wrap">
-                {[
-                    { id: 'attendance', label: 'Attendance', icon: Clock },
-                    { id: 'department', label: 'Department', icon: Users },
-                    { id: 'trends', label: 'Trends', icon: TrendingUp },
-                ].filter(tab => isAdmin || tab.id !== 'department').map((tab) => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setReportType(tab.id)}
-                        className={cn(
-                            "flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all",
-                            reportType === tab.id
-                                ? 'bg-lime text-black'
-                                : 'bg-zinc-900 text-zinc-500 border border-white/5 hover:text-white'
-                        )}
-                    >
-                        <tab.icon className="h-4 w-4" />
-                        {tab.label}
-                    </button>
-                ))}
-            </div>
+
 
             {/* Period Selector */}
             <div className="flex items-center gap-4">
