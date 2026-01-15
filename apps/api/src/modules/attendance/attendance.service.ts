@@ -591,8 +591,33 @@ export class AttendanceService {
             this.prisma.attendanceRecord.count({ where }),
         ]);
 
+        // Calculate summary stats
+        const [presentCount, halfDayCount, absentCount, onLeaveCount, lateCount] = await Promise.all([
+            this.prisma.attendanceRecord.count({
+                where: { ...where, status: 'PRESENT' }
+            }),
+            this.prisma.attendanceRecord.count({
+                where: { ...where, status: 'HALF_DAY' }
+            }),
+            this.prisma.attendanceRecord.count({
+                where: { ...where, status: 'ABSENT' }
+            }),
+            this.prisma.attendanceRecord.count({
+                where: { ...where, status: 'ON_LEAVE' }
+            }),
+            this.prisma.attendanceRecord.count({
+                where: { ...where, lateMinutes: { gt: 0 } }
+            })
+        ]);
+
         return {
             items: records,
+            summary: {
+                present: presentCount + halfDayCount,
+                absent: absentCount,
+                late: lateCount,
+                onLeave: onLeaveCount,
+            },
             meta: {
                 page,
                 limit,
