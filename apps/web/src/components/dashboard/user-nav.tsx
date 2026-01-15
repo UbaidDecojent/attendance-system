@@ -36,7 +36,7 @@ export default function UserNav() {
 
                     <DropdownMenu.Separator className="h-px bg-white/10 my-1" />
 
-                    <DropdownMenu.Item className="group flex items-center gap-2 px-2 py-1.5 text-sm outline-none cursor-pointer hover:bg-zinc-800 hover:text-white rounded-sm select-none transition-colors" onClick={() => router.push('/dashboard/profile')}>
+                    <DropdownMenu.Item className="group flex items-center gap-2 px-2 py-1.5 text-sm outline-none cursor-pointer hover:bg-zinc-800 hover:text-white rounded-sm select-none transition-colors" onClick={() => router.push('/dashboard/settings')}>
                         <User className="h-4 w-4 text-zinc-500 group-hover:text-white transition-colors" />
                         <span>Profile</span>
                     </DropdownMenu.Item>
