@@ -418,21 +418,7 @@ export default function DashboardPage() {
                             <h2 className="text-2xl font-medium text-white">Dashboard Overview</h2>
                             <p className="text-sm text-zinc-500">Overview {'>'} All Reports</p>
                         </div>
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => router.push('/dashboard/reports')}
-                                className="px-4 py-2 rounded-full bg-zinc-900 border border-white/5 text-xs font-bold text-zinc-400 hover:text-white transition-colors"
-                            >
-                                Filter
-                            </button>
-                            <button
-                                onClick={() => refetchStats()}
-                                disabled={isRefetching}
-                                className="h-9 w-9 rounded-full bg-zinc-900 border border-white/5 flex items-center justify-center text-zinc-400 hover:text-white transition-colors disabled:opacity-50"
-                            >
-                                <TrendingUp className={cn("h-4 w-4", isRefetching && "animate-spin")} />
-                            </button>
-                        </div>
+
                     </div>
 
                     {/* Employee View */}
