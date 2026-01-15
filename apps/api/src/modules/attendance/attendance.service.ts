@@ -125,12 +125,21 @@ export class AttendanceService {
 
         // Calculate late minutes based on shift
         let lateMinutes = 0;
-        if (employee.shift) {
-            const [shiftHour, shiftMinute] = employee.shift.startTime.split(':').map(Number);
+
+        // Use assigned shift or fallback to default company shift
+        let activeShift = employee.shift;
+        if (!activeShift) {
+            activeShift = await this.prisma.shift.findFirst({
+                where: { companyId, isDefault: true, isActive: true }
+            });
+        }
+
+        if (activeShift) {
+            const [shiftHour, shiftMinute] = activeShift.startTime.split(':').map(Number);
             const shiftStart = new Date(zonedNow);
             shiftStart.setHours(shiftHour, shiftMinute, 0, 0);
 
-            const graceTime = employee.shift.graceTimeIn || employee.company.graceTimeMinutes || 15;
+            const graceTime = activeShift.graceTimeIn || employee.company.graceTimeMinutes || 15;
             const effectiveStart = new Date(shiftStart.getTime() + graceTime * 60000);
 
             if (zonedNow > effectiveStart) {
@@ -240,14 +249,21 @@ export class AttendanceService {
         let earlyLeaveMinutes = 0;
         let lateMinutes = record.lateMinutes; // Start with existing lateness
 
-        if (employee.shift) {
-            const [startHour, startMinute] = employee.shift.startTime.split(':').map(Number);
-            const [endHour, endMinute] = employee.shift.endTime.split(':').map(Number);
+        // Use assigned shift or fallback to default company shift
+        let activeShift = employee.shift;
+        if (!activeShift) {
+            activeShift = await this.prisma.shift.findFirst({
+                where: { companyId, isDefault: true, isActive: true }
+            });
+        }
+
+        if (activeShift) {
+            const [startHour, startMinute] = activeShift.startTime.split(':').map(Number);
+            const [endHour, endMinute] = activeShift.endTime.split(':').map(Number);
             const shiftEnd = new Date(zonedNow);
             shiftEnd.setHours(endHour, endMinute, 0, 0);
 
             // Calculate expected shift duration (e.g. 9 hours)
-            // Handle day crossing if needed (assuming same day for now)
             let shiftDuration = (endHour * 60 + endMinute) - (startHour * 60 + startMinute);
             if (shiftDuration < 0) shiftDuration += 24 * 60;
 
@@ -269,11 +285,11 @@ export class AttendanceService {
 
         // Determine status
         let status = record.status;
-        if (employee.shift?.halfDayThreshold && totalWorkMinutes < employee.shift.halfDayThreshold) {
+        if (activeShift?.halfDayThreshold && totalWorkMinutes < activeShift.halfDayThreshold) {
             status = AttendanceStatus.HALF_DAY;
         }
-        // If lateness forgiven or full day worked, ensure status is PRESENT (unless it was something else specific? usually PRESENT)
-        if (lateMinutes === 0 && status === AttendanceStatus.HALF_DAY && totalWorkMinutes >= (employee.shift?.halfDayThreshold || 0) * 2) {
+        // If lateness forgiven or full day worked
+        if (lateMinutes === 0 && status === AttendanceStatus.HALF_DAY && totalWorkMinutes >= (activeShift?.halfDayThreshold || 0) * 2) {
             status = AttendanceStatus.PRESENT;
         }
 
@@ -424,6 +440,7 @@ export class AttendanceService {
         });
 
         // Check if today is a holiday
+        // Check if today is a holiday
         const holiday = await this.prisma.holiday.findFirst({
             where: {
                 companyId,
@@ -431,10 +448,18 @@ export class AttendanceService {
             },
         });
 
+        // Use assigned shift or fallback to default
+        let activeShift = employee.shift;
+        if (!activeShift) {
+            activeShift = await this.prisma.shift.findFirst({
+                where: { companyId, isDefault: true, isActive: true }
+            });
+        }
+
         // Check if today is a weekend
         const dayOfWeek = zonedNow.getDay();
-        const isWeekend = employee.shift
-            ? !employee.shift.workingDays.includes(dayOfWeek)
+        const isWeekend = activeShift
+            ? !activeShift.workingDays.includes(dayOfWeek)
             : dayOfWeek === 0 || dayOfWeek === 6;
 
         // Check for approved leave
@@ -453,11 +478,11 @@ export class AttendanceService {
             employee: {
                 id: employee.id,
                 name: `${employee.firstName} ${employee.lastName}`,
-                shift: employee.shift
+                shift: activeShift
                     ? {
-                        name: employee.shift.name,
-                        startTime: employee.shift.startTime,
-                        endTime: employee.shift.endTime,
+                        name: activeShift.name,
+                        startTime: activeShift.startTime,
+                        endTime: activeShift.endTime,
                     }
                     : null,
             },
