@@ -268,38 +268,41 @@ export default function ReportsPage() {
                                 </div>
                             ) : (
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie
-                                            data={departmentReport?.departments?.slice(0, 5) || []}
-                                            dataKey="totalAttendance"
-                                            nameKey="department.name"
-                                            cx="50%"
-                                            cy="50%"
-                                            innerRadius={60}
-                                            outerRadius={90}
-                                            stroke="#111"
-                                            strokeWidth={2}
-                                            paddingAngle={5}
-                                        >
-                                            {(departmentReport?.departments || []).map((_: any, index: number) => (
-                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                            ))}
-                                        </Pie>
+                                    <BarChart
+                                        layout="vertical"
+                                        data={departmentReport?.departments?.slice(0, 8) || []}
+                                        margin={{ top: 0, right: 30, left: 40, bottom: 0 }}
+                                    >
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#333" horizontal={false} />
+                                        <XAxis type="number" hide />
+                                        <YAxis
+                                            dataKey="department.name"
+                                            type="category"
+                                            width={100}
+                                            tick={{ fill: '#fff', fontSize: 12, fontWeight: 500 }}
+                                            axisLine={false}
+                                            tickLine={false}
+                                        />
                                         <Tooltip
+                                            cursor={{ fill: '#ffffff10' }}
                                             contentStyle={{
-                                                backgroundColor: '#000',
+                                                backgroundColor: '#18181b',
                                                 borderColor: '#333',
-                                                borderRadius: '12px',
-                                                color: '#fff'
+                                                borderRadius: '8px',
+                                                color: '#fff',
+                                                fontSize: '12px'
                                             }}
+                                            itemStyle={{ color: '#CCFF00' }}
+                                            formatter={(value) => [`${value} Present`, 'Attendance']}
                                         />
-                                        <Legend
-                                            verticalAlign="bottom"
-                                            height={36}
-                                            iconType="circle"
-                                            formatter={(value) => <span style={{ color: '#dadada', fontSize: 12, fontWeight: 500 }}>{value}</span>}
-                                        />
-                                    </PieChart>
+                                        <Bar
+                                            dataKey="totalAttendance"
+                                            fill="#CCFF00"
+                                            radius={[0, 4, 4, 0]}
+                                            barSize={24}
+                                        >
+                                        </Bar>
+                                    </BarChart>
                                 </ResponsiveContainer>
                             )}
                         </div>
