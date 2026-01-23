@@ -24,10 +24,13 @@ import { SubscriptionModule } from './modules/subscription/subscription.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { ProjectsModule } from './modules/projects/projects.module';
+import { TasksModule } from './modules/tasks/tasks.module';
 
 // Middleware
 import { TenantMiddleware } from './common/middleware/tenant.middleware';
 import { RequestLoggerMiddleware } from './common/middleware/request-logger.middleware';
+import { TimeLogsModule } from './modules/time-logs/time-logs.module';
 
 @Module({
     imports: [
@@ -70,6 +73,9 @@ import { RequestLoggerMiddleware } from './common/middleware/request-logger.midd
         WebhooksModule,
         AuditModule,
         NotificationsModule,
+        ProjectsModule,
+        TasksModule,
+        TimeLogsModule,
     ],
     providers: [
         {

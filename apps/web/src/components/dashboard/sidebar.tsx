@@ -14,7 +14,10 @@ import {
     CreditCard,
     LogOut,
     X,
-    Menu
+    Menu,
+    Briefcase,
+    Layers,
+    Timer
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/lib/stores/auth-store';
@@ -33,6 +36,12 @@ const navigation = [
 const bottomNavigation = [
     { name: 'Billing', href: '/dashboard/billing', icon: CreditCard },
     { name: 'Settings', href: '/dashboard/settings', icon: Settings },
+];
+
+const projectNavigation = [
+    { name: 'Projects', href: '/dashboard/projects', icon: Briefcase },
+    { name: 'Tasks', href: '/dashboard/tasks', icon: Layers },
+    { name: 'Time Logs', href: '/dashboard/time-logs', icon: Timer },
 ];
 
 export default function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
@@ -58,6 +67,38 @@ export default function Sidebar({ collapsed = false }: { collapsed?: boolean }) 
                     </span>
                 </div>
                 {navigation.filter(item => isAdmin || item.name !== 'Employees').map((item) => (
+                    <Link
+                        key={item.name}
+                        href={item.href}
+                        onClick={() => setMobileOpen(false)}
+                        className={cn(
+                            'flex items-center gap-4 px-3 py-3 rounded-[2rem] transition-all duration-300 group relative mx-2',
+                            collapsed ? "justify-center" : "",
+                            isActive(item.href)
+                                ? 'bg-lime text-black font-semibold shadow-[0_0_20px_rgba(204,255,0,0.1)]'
+                                : 'text-zinc-300 hover:text-white hover:bg-white/5'
+                        )}
+                        title={collapsed ? item.name : undefined}
+                    >
+                        <div className={cn(
+                            "h-6 w-6 flex items-center justify-center transition-colors duration-300",
+                            isActive(item.href) ? "text-black" : "text-current"
+                        )}>
+                            <item.icon className="h-5 w-5" />
+                        </div>
+                        {!collapsed && (
+                            <span className="relative z-10 whitespace-nowrap overflow-hidden text-ellipsis">{item.name}</span>
+                        )}
+                    </Link>
+                ))}
+
+                {/* Project Management */}
+                <div className={cn("px-4 mb-2 mt-4 transition-opacity duration-300", collapsed ? "opacity-0 h-0 overflow-hidden" : "opacity-100")}>
+                    <span className="text-xs font-medium text-zinc-600 uppercase tracking-widest pl-2">
+                        Project Management
+                    </span>
+                </div>
+                {projectNavigation.map((item) => (
                     <Link
                         key={item.name}
                         href={item.href}

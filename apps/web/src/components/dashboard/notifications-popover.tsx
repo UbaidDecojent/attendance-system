@@ -22,8 +22,8 @@ export default function NotificationsPopover() {
     // Initialize audio element
     useEffect(() => {
         // Create audio element for notification sound
-        audioRef.current = new Audio('/notification.mp3');
-        audioRef.current.volume = 0.5;
+        // audioRef.current = new Audio('/notification.mp3');
+        // audioRef.current.volume = 0.5;
 
         // Load sound preference from localStorage
         const prefs = localStorage.getItem(STORAGE_KEY);

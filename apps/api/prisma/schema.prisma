@@ -66,6 +66,8 @@ enum NotificationType {
   LEAVE_APPROVED
   LEAVE_REJECTED
   GENERAL
+  PROJECT_ASSIGNED
+  TASK_ASSIGNED
 }
 
 enum AttendanceType {
@@ -80,6 +82,34 @@ enum WorkLocationType {
   HOME
   FIELD
   OTHER
+}
+
+enum ProjectStatus {
+  ACTIVE
+  COMPLETED
+  ON_HOLD
+  ARCHIVED
+}
+
+enum TaskStatus {
+  TO_DO
+  IN_PROGRESS
+  IN_REVIEW
+  ON_HOLD
+  COMPLETED
+  CLOSED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum BillingType {
+  BILLABLE
+  NON_BILLABLE
 }
 
 // ==================== COMPANY (TENANT) ====================
@@ -136,6 +166,9 @@ model Company {
   notifications     Notification[]
   officeLocations   OfficeLocation[]
   regularizationRequests RegularizationRequest[]
+  projects          Project[]
+  tasks             Task[]
+  timeLogs          TimeLog[]
   
   @@index([slug])
   @@index([email])
@@ -354,6 +387,9 @@ model Employee {
   attendanceRecords AttendanceRecord[]
   leaves            Leave[]
   regularizationRequests RegularizationRequest[]
+  ownedProjects     Project[] @relation("ProjectOwner")
+  assignedTasks     Task[]    @relation("TaskAssignees")
+  timeLogs          TimeLog[]
   
   @@unique([companyId, employeeCode])
   @@unique([companyId, email])
@@ -705,7 +741,112 @@ model RegularizationRequest {
   employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   approver    User?    @relation("RegularizationApprover", fields: [approverId], references: [id])
 
+
   @@index([companyId])
   @@index([employeeId])
+  @@index([status])
+}
+
+// ==================== PROJECT MANAGEMENT ====================
+
+model Project {
+  id          String   @id @default(uuid())
+  companyId   String
+  ownerId     String? // Relation to Employee
+
+  title       String
+  clientName  String?
+  description String? @db.Text
+  status      ProjectStatus @default(ACTIVE)
+  
+  // Dates
+  startDate   DateTime? @db.Date
+  endDate     DateTime? @db.Date
+
+  // Metadata
+  tags        String[] @default([])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  owner       Employee? @relation("ProjectOwner", fields: [ownerId], references: [id])
+
+  taskStats   Json?     @default("{}") // Cache: { total, completed, progress }
+  
+  tasks       Task[]
+  timeLogs    TimeLog[]
+
+  @@index([companyId])
+  @@index([ownerId])
+  @@index([status])
+}
+
+model Task {
+  id          String   @id @default(uuid())
+  companyId   String
+  projectId   String
+  
+  name        String
+  description String?  @db.Text
+  
+  status      TaskStatus   @default(TO_DO)
+  priority    TaskPriority @default(MEDIUM)
+  billingType BillingType  @default(NON_BILLABLE)
+  
+  startDate   DateTime? @db.Date
+  dueDate     DateTime? @db.Date
+  duration    String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignees   Employee[] @relation("TaskAssignees")
+  timeLogs    TimeLog[]
+  
+  @@index([companyId])
+  @@index([projectId])
+  @@index([status])
+  @@index([priority])
+}
+
+enum TimeLogStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model TimeLog {
+  id          String    @id @default(uuid())
+  companyId   String
+  projectId   String
+  taskId      String
+  employeeId  String
+
+  date        DateTime  @db.Date
+  durationMinutes Int   // Stored in minutes
+  billingType BillingType
+
+  description String?   @db.Text
+  status      TimeLogStatus @default(PENDING)
+  rejectionReason String?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  task        Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  employee    Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([projectId])
+  @@index([taskId])
+  @@index([employeeId])
+  @@index([date])
   @@index([status])
 }
