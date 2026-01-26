@@ -6,25 +6,28 @@ import { useAuthStore } from '@/lib/stores/auth-store';
 import {
     Clock,
     Calendar,
-    ChevronLeft,
-    ChevronRight,
     CheckCircle,
     XCircle,
     MapPin,
-    X
+    X,
+    AlertTriangle
 } from 'lucide-react';
 import { attendanceApi } from '@/lib/api/attendance';
 import { formatDate, formatTime, cn } from '@/lib/utils';
-import { format, startOfMonth, endOfMonth, addMonths, subMonths, differenceInCalendarDays } from 'date-fns';
+import { format, startOfMonth, endOfMonth, differenceInCalendarDays } from 'date-fns';
 import { DataTable } from '@/components/data-table';
 import { ColumnDef } from '@tanstack/react-table';
+import ZohoDatePicker from '@/components/ui/zoho-date-picker';
 
 export default function AttendancePage() {
     const user = useAuthStore((state) => state.user);
     const isAdmin = ['COMPANY_ADMIN', 'HR_MANAGER'].includes(user?.role || '');
-    const [currentMonth, setCurrentMonth] = useState(new Date());
-    const startDate = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
-    const endDate = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
+    const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
+        from: startOfMonth(new Date()),
+        to: endOfMonth(new Date())
+    });
+    const startDate = format(dateRange.from, 'yyyy-MM-dd');
+    const endDate = format(dateRange.to, 'yyyy-MM-dd');
 
     const { data: history, isLoading } = useQuery({
         queryKey: ['attendanceHistory', startDate, endDate, isAdmin],
@@ -40,8 +43,6 @@ export default function AttendancePage() {
             .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [history]);
 
-    const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
-    const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
 
     const [selectedLocation, setSelectedLocation] = useState<any>(null);
 
@@ -78,14 +79,32 @@ export default function AttendancePage() {
                 header: 'Check In',
                 cell: ({ row }) => {
                     const record = row.original;
+                    const shiftStart = record.employee?.shift?.startTime;
+
+                    let statusLabel = null;
+                    if (record.checkInTime && shiftStart) {
+                        const actual = new Date(record.checkInTime);
+                        const [h, m] = shiftStart.split(':').map(Number);
+                        const shiftDate = new Date(actual);
+                        shiftDate.setHours(h, m, 0, 0);
+
+                        const diff = Math.floor((actual.getTime() - shiftDate.getTime()) / 60000);
+                        const absDiff = Math.abs(diff);
+                        const formatDuration = (mins: number) => mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m`;
+
+                        if (diff < 0) statusLabel = { text: `Early: ${formatDuration(absDiff)}`, color: 'text-lime' };
+                        else if (diff > 15) statusLabel = { text: `Late: ${formatDuration(diff)}`, color: 'text-red-500' };
+                        else statusLabel = { text: 'On Time', color: 'text-zinc-500' };
+                    }
+
                     return record.checkInTime ? (
                         <div className="flex flex-col gap-1">
                             <span className="text-lime font-bold">
                                 {formatTime(record.checkInTime)}
                             </span>
-                            {record.lateMinutes > 0 && (
-                                <span className="text-red-500 text-[10px] font-extrabold uppercase tracking-wide">
-                                    Late: {record.lateMinutes}m
+                            {statusLabel && (
+                                <span className={`${statusLabel.color} text-[10px] font-extrabold uppercase tracking-wide flex items-center gap-1`}>
+                                    {statusLabel.text}
                                 </span>
                             )}
                             {record.checkInLocation && (
@@ -113,14 +132,32 @@ export default function AttendancePage() {
                 header: 'Check Out',
                 cell: ({ row }) => {
                     const record = row.original;
+                    const shiftEnd = record.employee?.shift?.endTime;
+
+                    let statusLabel = null;
+                    if (record.checkOutTime && shiftEnd) {
+                        const actual = new Date(record.checkOutTime);
+                        const [h, m] = shiftEnd.split(':').map(Number);
+                        const shiftDate = new Date(actual);
+                        shiftDate.setHours(h, m, 0, 0);
+
+                        const diff = Math.floor((actual.getTime() - shiftDate.getTime()) / 60000);
+                        const absDiff = Math.abs(diff);
+                        const formatDuration = (mins: number) => mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m`;
+
+                        if (diff < 0) statusLabel = { text: `Early: ${formatDuration(absDiff)}`, color: 'text-amber-500' }; // Left Early
+                        else if (diff > 0) statusLabel = { text: `OT: ${formatDuration(diff)}`, color: 'text-lime' }; // Overtime
+                        else statusLabel = { text: 'On Time', color: 'text-zinc-500' };
+                    }
+
                     return record.checkOutTime ? (
                         <div className="flex flex-col gap-1">
                             <span className="text-white font-bold">
                                 {formatTime(record.checkOutTime)}
                             </span>
-                            {record.earlyLeavingMinutes > 0 && (
-                                <span className="text-orange-500 text-[10px] font-extrabold uppercase tracking-wide">
-                                    Early: {record.earlyLeavingMinutes}m
+                            {statusLabel && (
+                                <span className={`${statusLabel.color} text-[10px] font-extrabold uppercase tracking-wide flex items-center gap-1`}>
+                                    {statusLabel.text}
                                 </span>
                             )}
                             {record.checkOutLocation && (
@@ -183,23 +220,12 @@ export default function AttendancePage() {
                 </div>
             </div>
 
-            {/* Month Navigation */}
-            <div className="flex items-center justify-between bg-[#111111] border border-white/5 rounded-[1.5rem] p-4">
-                <button
-                    onClick={prevMonth}
-                    className="p-2 hover:bg-zinc-800 rounded-full transition-colors text-zinc-400 hover:text-white"
-                >
-                    <ChevronLeft className="h-5 w-5" />
-                </button>
-                <h2 className="text-lg font-bold text-white">
-                    {format(currentMonth, 'MMMM yyyy')}
-                </h2>
-                <button
-                    onClick={nextMonth}
-                    className="p-2 hover:bg-zinc-800 rounded-full transition-colors text-zinc-400 hover:text-white"
-                >
-                    <ChevronRight className="h-5 w-5" />
-                </button>
+            {/* Date Range Filter */}
+            <div className="flex items-center justify-start bg-[#111111] border border-white/5 rounded-[1.5rem] p-2">
+                <ZohoDatePicker
+                    dateRange={dateRange}
+                    onChange={setDateRange}
+                />
             </div>
 
             {/* Summary Stats */}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -26,7 +26,14 @@ export default function LoginPage() {
     const [requires2FA, setRequires2FA] = useState(false);
     const [tempToken, setTempToken] = useState('');
     const [twoFactorCode, setTwoFactorCode] = useState('');
-    const setAuth = useAuthStore((state) => state.setAuth);
+    const { setAuth, isAuthenticated, isHydrated } = useAuthStore();
+
+    // Redirect if already logged in
+    useEffect(() => {
+        if (isHydrated && isAuthenticated) {
+            router.replace('/dashboard');
+        }
+    }, [isHydrated, isAuthenticated, router]);
 
     const {
         register,

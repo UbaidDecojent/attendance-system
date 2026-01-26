@@ -12,7 +12,8 @@ import {
     XCircle,
     AlertCircle,
     PlayCircle,
-    PauseCircle
+    PauseCircle,
+    AlertTriangle
 } from 'lucide-react';
 import { BarChart, Bar, ResponsiveContainer, Tooltip, XAxis, CartesianGrid } from 'recharts';
 import { useAuthStore } from '@/lib/stores/auth-store';
@@ -28,6 +29,7 @@ export default function DashboardPage() {
     const isAdmin = ['COMPANY_ADMIN', 'HR_MANAGER'].includes(user?.role || '');
     const [checkingIn, setCheckingIn] = useState(false);
     const [checkingOut, setCheckingOut] = useState(false);
+    const [showCheckoutConfirmation, setShowCheckoutConfirmation] = useState(false);
 
     // Date helpers for charts
     const today = new Date();
@@ -281,7 +283,12 @@ export default function DashboardPage() {
         }
     };
 
-    const handleCheckOut = async () => {
+    const initiateCheckOut = () => {
+        setShowCheckoutConfirmation(true);
+    };
+
+    const performCheckOut = async () => {
+        setShowCheckoutConfirmation(false);
         setCheckingOut(true);
         const toastId = toast.loading('Getting location...');
 
@@ -304,6 +311,32 @@ export default function DashboardPage() {
             }
         } finally {
             setCheckingOut(false);
+        }
+    };
+
+    const getTimingStatus = (actualTime: string | null | undefined, shiftTime: string | undefined, type: 'start' | 'end') => {
+        if (!actualTime || !shiftTime) return null;
+
+        const actual = new Date(actualTime);
+        const [hours, minutes] = shiftTime.split(':').map(Number);
+
+        const shiftContext = new Date(actual);
+        shiftContext.setHours(hours, minutes, 0, 0);
+
+        const diffMinutes = Math.floor((actual.getTime() - shiftContext.getTime()) / 60000);
+        const absDiff = Math.abs(diffMinutes);
+        const formatDuration = (mins: number) => mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins} min`;
+
+        if (type === 'start') {
+            // Check In: Early (< 0), On Time (0-15), Late (> 15)
+            if (diffMinutes < 0) return { label: `Early by ${formatDuration(absDiff)}`, color: 'text-lime', icon: CheckCircle };
+            if (diffMinutes > 15) return { label: `Late by ${formatDuration(diffMinutes)}`, color: 'text-red-500', icon: AlertTriangle };
+            return { label: 'On Time', color: 'text-zinc-500', icon: CheckCircle };
+        } else {
+            // Check Out: Early (< 0), Overtime (> 0)
+            if (diffMinutes < 0) return { label: `Early by ${formatDuration(absDiff)}`, color: 'text-amber-500', icon: AlertTriangle };
+            if (diffMinutes > 0) return { label: `OT by ${formatDuration(diffMinutes)}`, color: 'text-lime', icon: CheckCircle };
+            return { label: 'On Time', color: 'text-zinc-500', icon: CheckCircle };
         }
     };
 
@@ -456,12 +489,32 @@ export default function DashboardPage() {
                                         <p className="text-2xl font-bold text-white tabular-nums">
                                             {todayStatus?.attendance?.checkInTime ? formatTime(todayStatus.attendance.checkInTime) : '--:--'}
                                         </p>
+                                        {todayStatus?.attendance?.checkInTime && todayStatus?.employee?.shift && (() => {
+                                            const status = getTimingStatus(todayStatus.attendance.checkInTime, todayStatus.employee.shift.startTime, 'start');
+                                            if (!status) return null;
+                                            return (
+                                                <div className={`flex items-center gap-1.5 mt-2 text-[10px] uppercase font-extrabold tracking-wider ${status.color}`}>
+                                                    <status.icon className="h-3 w-3" />
+                                                    {status.label}
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
                                     <div className="p-5 rounded-[1.5rem] bg-zinc-900/50 border border-white/5">
                                         <p className="text-zinc-500 text-xs font-bold uppercase tracking-wider mb-2">Check Out</p>
                                         <p className="text-2xl font-bold text-white tabular-nums">
                                             {todayStatus?.attendance?.checkOutTime ? formatTime(todayStatus.attendance.checkOutTime) : '--:--'}
                                         </p>
+                                        {todayStatus?.attendance?.checkOutTime && todayStatus?.employee?.shift && (() => {
+                                            const status = getTimingStatus(todayStatus.attendance.checkOutTime, todayStatus.employee.shift.endTime, 'end');
+                                            if (!status) return null;
+                                            return (
+                                                <div className={`flex items-center gap-1.5 mt-2 text-[10px] uppercase font-extrabold tracking-wider ${status.color}`}>
+                                                    <status.icon className="h-3 w-3" />
+                                                    {status.label}
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
                                     <div className={cn(
                                         "p-5 rounded-[1.5rem] border",
@@ -508,7 +561,7 @@ export default function DashboardPage() {
                                         </button>
                                     ) : !todayStatus?.attendance?.checkOutTime ? (
                                         <button
-                                            onClick={handleCheckOut}
+                                            onClick={initiateCheckOut}
                                             disabled={checkingOut}
                                             className="w-full sm:w-auto bg-white hover:bg-zinc-200 text-black font-extrabold text-lg px-8 py-4 rounded-[1.5rem] transition-all flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(255,255,255,0.1)] disabled:opacity-50 disabled:cursor-not-allowed min-w-[200px]"
                                         >
@@ -766,6 +819,40 @@ export default function DashboardPage() {
                     </table>
                 </div>
             </div>
-        </div>
+            {/* Checkout Confirmation Modal */}
+            {
+                showCheckoutConfirmation && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+                        <div className="bg-[#111111] border border-white/10 p-8 rounded-[2rem] max-w-md w-full shadow-[0_0_50px_rgba(0,0,0,0.5)] space-y-6 transform animate-in zoom-in-95 duration-200">
+                            <div className="space-y-4 text-center">
+                                <div className="mx-auto h-16 w-16 rounded-full bg-red-500/10 flex items-center justify-center mb-4 border border-red-500/20">
+                                    <PauseCircle className="h-8 w-8 text-red-500" />
+                                </div>
+                                <h3 className="text-2xl font-bold text-white">Confirm Check Out?</h3>
+                                <p className="text-zinc-400 text-lg leading-relaxed">
+                                    Are you sure you want to end your shift? <br />
+                                    <span className="text-red-400 font-medium">You cannot check in again today.</span>
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 pt-2">
+                                <button
+                                    onClick={() => setShowCheckoutConfirmation(false)}
+                                    className="px-6 py-4 rounded-xl bg-zinc-900 border border-white/5 text-white font-bold hover:bg-zinc-800 transition-colors"
+                                >
+                                    No, Cancel
+                                </button>
+                                <button
+                                    onClick={performCheckOut}
+                                    className="px-6 py-4 rounded-xl bg-lime text-black font-bold hover:bg-lime-400 transition-all shadow-[0_0_20px_rgba(204,255,0,0.2)] hover:shadow-[0_0_30px_rgba(204,255,0,0.4)]"
+                                >
+                                    Yes, Check Out
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+        </div >
     );
 }

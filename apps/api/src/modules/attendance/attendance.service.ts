@@ -22,6 +22,7 @@ import {
     differenceInMinutes,
     parseISO,
     format,
+    differenceInBusinessDays,
 } from 'date-fns';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { AttendanceStatus, AttendanceType } from '@prisma/client';
@@ -268,9 +269,10 @@ export class AttendanceService {
             if (shiftDuration < 0) shiftDuration += 24 * 60;
 
             // RULE: If they worked the full shift hours (or more), forgive lateness
-            if (totalWorkMinutes >= shiftDuration) {
-                lateMinutes = 0;
-            }
+            // DISABLED: User wants to track punctuality strictly matching the UI warnings.
+            // if (totalWorkMinutes >= shiftDuration) {
+            //     lateMinutes = 0;
+            // }
 
             const standardMinutes = employee.company.overtimeThresholdMinutes || 480;
 
@@ -584,6 +586,7 @@ export class AttendanceService {
                             lastName: true,
                             employeeCode: true,
                             department: { select: { name: true } },
+                            shift: { select: { name: true, startTime: true, endTime: true, graceTimeIn: true } },
                         },
                     },
                 },
@@ -592,7 +595,7 @@ export class AttendanceService {
         ]);
 
         // Calculate summary stats
-        const [presentCount, halfDayCount, absentCount, onLeaveCount, lateCount] = await Promise.all([
+        const [presentCount, halfDayCount, absentCount, onLeaveCount, lateRecordsCandidates] = await Promise.all([
             this.prisma.attendanceRecord.count({
                 where: { ...where, status: 'PRESENT' }
             }),
@@ -605,16 +608,81 @@ export class AttendanceService {
             this.prisma.attendanceRecord.count({
                 where: { ...where, status: 'ON_LEAVE' }
             }),
-            this.prisma.attendanceRecord.count({
-                where: { ...where, lateMinutes: { gt: 0 } }
+            // Fetch all records for late calculation (to match frontend dynamic logic)
+            this.prisma.attendanceRecord.findMany({
+                where,
+                select: {
+                    checkInTime: true,
+                    employee: {
+                        select: {
+                            shift: {
+                                select: { startTime: true, graceTimeIn: true }
+                            },
+                            company: { select: { graceTimeMinutes: true } }
+                        }
+                    }
+                }
             })
         ]);
+
+        // Calculate late count dynamically
+        const lateCount = (lateRecordsCandidates as any[]).filter(r => {
+            if (!r.checkInTime || !r.employee?.shift?.startTime) return false;
+
+            const [h, m] = r.employee.shift.startTime.split(':').map(Number);
+            const shiftDate = new Date(r.checkInTime);
+            shiftDate.setHours(h, m, 0, 0);
+
+            const diff = (new Date(r.checkInTime).getTime() - shiftDate.getTime()) / 60000;
+            // Use shift grace time or company default or 15
+            const grace = r.employee.shift.graceTimeIn ?? r.employee.company?.graceTimeMinutes ?? 15;
+
+            return diff > grace;
+        }).length;
+
+        // Calculate calculated absent days if range is provided
+        let calculatedAbsent = 0;
+        if (startDate && endDate) {
+            const start = new Date(startDate);
+            const queryEnd = new Date(endDate);
+            const now = new Date();
+            // Cap end date at today if looking at future to avoid counting future days as absent
+            const end = queryEnd > now ? now : queryEnd;
+
+            // 1. Calculate Working Days (Business Days - Holidays)
+            const businessDays = differenceInBusinessDays(end, start) + 1;
+
+            const holidayCount = await this.prisma.holiday.count({
+                where: {
+                    companyId,
+                    date: { gte: start, lte: end }
+                }
+            });
+
+            const workingDays = Math.max(0, businessDays - holidayCount);
+
+            // 2. Count Employees in Scope
+            const empWhere: any = { companyId, isActive: true };
+            if (where.employeeId) empWhere.id = where.employeeId;
+            if (where.employee?.departmentId) empWhere.departmentId = where.employee.departmentId;
+
+            const relevantEmployeeCount = await this.prisma.employee.count({ where: empWhere });
+
+            // 3. Expected Total Records
+            const expectedRecords = relevantEmployeeCount * workingDays;
+
+            // 4. Actual Records (Present + HalfDay + OnLeave)
+            if (!status) {
+                const actualattendance = presentCount + halfDayCount + onLeaveCount;
+                calculatedAbsent = Math.max(0, expectedRecords - actualattendance);
+            }
+        }
 
         return {
             items: records,
             summary: {
                 present: presentCount + halfDayCount,
-                absent: absentCount,
+                absent: absentCount + calculatedAbsent,
                 late: lateCount,
                 onLeave: onLeaveCount,
             },

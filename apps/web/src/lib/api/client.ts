@@ -89,8 +89,11 @@ api.interceptors.response.use(
                 return api(originalRequest);
             } catch (refreshError) {
                 processQueue(refreshError as Error, null);
-                localStorage.removeItem('accessToken');
-                localStorage.removeItem('user');
+
+                // Properly logout via the store to clear persistence
+                const { useAuthStore } = await import('@/lib/stores/auth-store');
+                useAuthStore.getState().logout();
+                localStorage.removeItem('auth-storage'); // Force clear just in case
 
                 // Only redirect if we're in the browser
                 if (typeof window !== 'undefined') {

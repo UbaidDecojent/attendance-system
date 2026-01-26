@@ -17,6 +17,7 @@ export interface ApiResponse<T> {
         total?: number;
         totalPages?: number;
     };
+    summary?: any;
 }
 
 @Injectable()
@@ -33,12 +34,12 @@ export class TransformInterceptor<T>
                     return data;
                 }
 
-                // Check if data is paginated result
                 if (data && typeof data === 'object' && 'items' in data && 'meta' in data) {
                     return {
                         success: true,
                         data: data.items,
                         meta: data.meta,
+                        summary: (data as any).summary,
                     };
                 }
 
