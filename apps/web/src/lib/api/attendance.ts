@@ -80,4 +80,19 @@ export const attendanceApi = {
         const response = await api.put(`/attendance/${id}/lock`);
         return response.data.data;
     },
+
+    async createRegularization(data: { date: string; checkInTime?: string; checkOutTime?: string; reason: string }) {
+        const response = await api.post('/attendance/regularization', data);
+        return response.data;
+    },
+
+    async getRegularizationRequests(params?: { status?: string; employeeId?: string }) {
+        const response = await api.get('/attendance/regularization', { params });
+        return response.data;
+    },
+
+    async updateRegularization(id: string, data: { status: string; rejectionReason?: string }) {
+        const response = await api.put(`/attendance/regularization/${id}`, data);
+        return response.data;
+    },
 };

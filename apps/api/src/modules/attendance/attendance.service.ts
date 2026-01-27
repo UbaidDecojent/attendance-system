@@ -431,7 +431,6 @@ export class AttendanceService {
         const zonedNow = toZonedTime(new Date(), timezone);
         const today = startOfDay(zonedNow);
         const todayUtc = fromZonedTime(today, timezone);
-
         const record = await this.prisma.attendanceRecord.findUnique({
             where: {
                 employeeId_date: {
@@ -440,6 +439,7 @@ export class AttendanceService {
                 },
             },
         });
+
 
         // Check if today is a holiday
         // Check if today is a holiday
@@ -952,8 +952,10 @@ export class AttendanceService {
     // ==================== REGULARIZATION ====================
 
     async createRegularization(companyId: string, employeeId: string, dto: CreateRegularizationDto) {
-        const date = new Date(dto.date);
-        const dayStart = startOfDay(date);
+        // Use UTC Noon to prevent timezone truncation
+        const [year, month, day] = dto.date.split('-').map(Number);
+        const date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+        const dayStart = date;
 
         // Check if request already exists
         const existing = await this.prisma.regularizationRequest.findFirst({
@@ -1009,6 +1011,7 @@ export class AttendanceService {
         dto: UpdateRegularizationDto,
         approverId: string
     ) {
+        console.log('HIT updateRegularization', { requestId, status: dto.status });
         const request = await this.prisma.regularizationRequest.findUnique({
             where: { id: requestId, companyId }
         });
@@ -1033,32 +1036,105 @@ export class AttendanceService {
 
         if (dto.status === RegularizationStatus.APPROVED) {
             // Update attendance record
-            await this.prisma.attendanceRecord.upsert({
+            // Fetch records within +/- 2 days to ensure we catch timezone-shifted records
+            // This is safer than 'take: 10' and avoids strict DB equality issues.
+            const { subDays, addDays, isSameDay, differenceInMinutes } = require('date-fns');
+            const searchDate = new Date(request.date);
+            const recentRecords = await this.prisma.attendanceRecord.findMany({
                 where: {
-                    employeeId_date: {
-                        employeeId: request.employeeId,
-                        date: request.date
+                    employeeId: request.employeeId,
+                    date: {
+                        gte: subDays(searchDate, 2),
+                        lte: addDays(searchDate, 2)
                     }
                 },
-                create: {
-                    companyId,
-                    employeeId: request.employeeId,
-                    date: request.date,
-                    checkInTime: request.checkInTime,
-                    checkOutTime: request.checkOutTime,
-                    status: AttendanceStatus.PRESENT,
-                    type: AttendanceType.OFFICE, // Default
-                    isManualEntry: true,
-                    manualEntryReason: `Regularization approved: ${request.reason}`
-                },
-                update: {
-                    checkInTime: request.checkInTime,
-                    checkOutTime: request.checkOutTime,
-                    status: AttendanceStatus.PRESENT,
-                    isManualEntry: true,
-                    manualEntryReason: `Regularization approved: ${request.reason}`
-                }
+                orderBy: { date: 'desc' }
             });
+
+            console.log('HIT updateRegularization', { id: requestId, matches: recentRecords.length });
+
+            // Use date-fns isSameDay to compare
+            const matchingRecords = recentRecords.filter(r =>
+                isSameDay(new Date(r.date), new Date(request.date))
+            );
+
+            // Extract best times from matching records
+            const existingCheckIn = matchingRecords.find(r => r.checkInTime)?.checkInTime;
+            const existingCheckOut = matchingRecords.find(r => r.checkOutTime)?.checkOutTime;
+
+            // Merge with Request
+            // IMPORTANT: If request param is null, we try to keep existing.
+            const finalCheckIn = request.checkInTime || existingCheckIn;
+            const finalCheckOut = request.checkOutTime || existingCheckOut;
+
+            let totalWorkMinutes = 0;
+            let lateMinutes = 0;
+
+            if (finalCheckIn && finalCheckOut) {
+                const diff = differenceInMinutes(finalCheckOut, finalCheckIn);
+                totalWorkMinutes = diff > 0 ? diff : 0;
+                if (matchingRecords[0]?.totalBreakMinutes) {
+                    totalWorkMinutes -= matchingRecords[0].totalBreakMinutes;
+                }
+            }
+
+            if (finalCheckIn) {
+                const employee = await this.prisma.employee.findUnique({
+                    where: { id: request.employeeId },
+                    include: { shift: true }
+                });
+
+                if (employee?.shift) {
+                    const [h, m] = employee.shift.startTime.split(':').map(Number);
+                    const shiftStart = new Date(finalCheckIn);
+                    shiftStart.setHours(h, m, 0, 0);
+
+                    const lateDiff = differenceInMinutes(finalCheckIn, shiftStart);
+                    if (lateDiff > (employee.shift.graceTimeIn || 0)) {
+                        lateMinutes = lateDiff;
+                    }
+                }
+            }
+
+            // Build Data Object carefully. Use undefined to avoid overwriting with null during UPDATE.
+            const commonData: any = {
+                status: AttendanceStatus.PRESENT,
+                isManualEntry: true,
+                manualEntryReason: `Regularization approved: ${request.reason}`,
+                totalWorkMinutes,
+                lateMinutes
+            };
+
+            // Only set these if they exist. For update, omitting means key is NOT touched.
+            if (finalCheckIn) commonData.checkInTime = finalCheckIn;
+            if (finalCheckOut) commonData.checkOutTime = finalCheckOut;
+
+            if (matchingRecords.length > 0) {
+                // Update the FIRST record
+                const primaryRecord = matchingRecords[0];
+                await this.prisma.attendanceRecord.update({
+                    where: { id: primaryRecord.id },
+                    data: commonData
+                });
+
+                // DELETE duplicates if any
+                if (matchingRecords.length > 1) {
+                    const idsToDelete = matchingRecords.slice(1).map(r => r.id);
+                    await this.prisma.attendanceRecord.deleteMany({
+                        where: { id: { in: idsToDelete } }
+                    });
+                }
+            } else {
+                await this.prisma.attendanceRecord.create({
+                    data: {
+                        companyId,
+                        employeeId: request.employeeId,
+                        date: request.date,
+                        type: AttendanceType.OFFICE,
+                        ...commonData
+                    }
+                });
+            }
         }
 
         return updated;

@@ -18,6 +18,8 @@ import { format, startOfMonth, endOfMonth, differenceInCalendarDays } from 'date
 import { DataTable } from '@/components/data-table';
 import { ColumnDef } from '@tanstack/react-table';
 import ZohoDatePicker from '@/components/ui/zoho-date-picker';
+import { CorrectionRequestModal } from '@/components/dashboard/attendance/correction-request-modal';
+import { RegularizationList } from '@/components/dashboard/attendance/regularization-list';
 
 export default function AttendancePage() {
     const user = useAuthStore((state) => state.user);
@@ -28,6 +30,8 @@ export default function AttendancePage() {
     });
     const startDate = format(dateRange.from, 'yyyy-MM-dd');
     const endDate = format(dateRange.to, 'yyyy-MM-dd');
+    const [isCorrectionOpen, setIsCorrectionOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState<'history' | 'requests'>('history');
 
     const { data: history, isLoading } = useQuery({
         queryKey: ['attendanceHistory', startDate, endDate, isAdmin],
@@ -35,6 +39,20 @@ export default function AttendancePage() {
             ? attendanceApi.getHistory({ startDate, endDate, limit: 100 })
             : attendanceApi.getMyHistory({ startDate, endDate, limit: 100 }),
     });
+
+    const { data: regularizationsData, refetch: refetchRequests } = useQuery({
+        queryKey: ['regularizations', isAdmin],
+        queryFn: () => attendanceApi.getRegularizationRequests(),
+    });
+
+    const regularizations = useMemo(() => {
+        if (!regularizationsData) return [];
+        if (Array.isArray(regularizationsData)) return regularizationsData;
+        if ((regularizationsData as any).data && Array.isArray((regularizationsData as any).data)) {
+            return (regularizationsData as any).data;
+        }
+        return [];
+    }, [regularizationsData]);
 
     const filteredHistoryItems = useMemo(() => {
         if (!history?.items) return [];
@@ -218,43 +236,91 @@ export default function AttendancePage() {
                     <h1 className="text-2xl font-bold">Attendance History</h1>
                     <p className="text-muted-foreground">View and track your attendance records</p>
                 </div>
-            </div>
-
-            {/* Date Range Filter */}
-            <div className="flex items-center justify-start bg-[#111111] border border-white/5 rounded-[1.5rem] p-2">
-                <ZohoDatePicker
-                    dateRange={dateRange}
-                    onChange={setDateRange}
-                />
-            </div>
-
-            {/* Summary Stats */}
-            <div className="grid sm:grid-cols-4 gap-4">
-                {[
-                    { label: 'Present Days', value: history?.summary?.present || 0, icon: CheckCircle },
-                    { label: 'Absent Days', value: history?.summary?.absent || 0, icon: XCircle },
-                    { label: 'Late Days', value: history?.summary?.late || 0, icon: Clock },
-                    { label: 'Leave Days', value: history?.summary?.onLeave || 0, icon: Calendar },
-                ].map((stat, i) => (
-                    <div key={i} className="bg-[#111111] border border-white/5 rounded-[1.5rem] p-6 flex flex-col justify-between">
-                        <div className="flex items-start justify-between mb-4">
-                            <div className="p-3 rounded-full bg-zinc-900 border border-white/5 text-lime">
-                                <stat.icon className="h-6 w-6" />
-                            </div>
-                            <span className="text-4xl font-extrabold text-white tracking-tighter">{stat.value}</span>
-                        </div>
-                        <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">{stat.label}</p>
-                    </div>
-                ))}
-            </div>
-
-            {/* Attendance Records Table */}
-            {isLoading ? (
-                <div className="bg-[#111111] border border-white/5 rounded-[2rem] p-12 text-center text-zinc-500 animate-pulse">
-                    Loading records...
+                <div className="flex items-center gap-3">
+                    {!isAdmin && (
+                        <button
+                            onClick={() => setIsCorrectionOpen(true)}
+                            className="px-5 py-2.5 bg-lime hover:bg-lime/90 text-black rounded-xl text-sm font-semibold transition-all shadow-[0_0_20px_-5px_rgba(212,244,69,0.4)] hover:shadow-[0_0_25px_-5px_rgba(212,244,69,0.6)] active:scale-95 flex items-center gap-2"
+                        >
+                            <AlertTriangle className="h-4 w-4 text-black stroke-[2.5px]" />
+                            Request Correction
+                        </button>
+                    )}
                 </div>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex items-center gap-1 p-1 bg-[#111111] border border-white/5 rounded-2xl w-fit">
+                <button
+                    onClick={() => setActiveTab('history')}
+                    className={cn(
+                        "px-4 py-2 rounded-xl text-sm font-bold transition-all",
+                        activeTab === 'history' ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-500 hover:text-white"
+                    )}
+                >
+                    History
+                </button>
+                <button
+                    onClick={() => setActiveTab('requests')}
+                    className={cn(
+                        "px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2",
+                        activeTab === 'requests' ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-500 hover:text-white"
+                    )}
+                >
+                    Requests
+                    {regularizations && regularizations.filter((r: any) => r.status === 'PENDING').length > 0 && (
+                        <span className="bg-lime text-black text-[10px] min-w-[18px] h-[18px] flex items-center justify-center rounded-full">
+                            {regularizations.filter((r: any) => r.status === 'PENDING').length}
+                        </span>
+                    )}
+                </button>
+            </div>
+
+            {activeTab === 'history' ? (
+                <>
+                    {/* Date Range Filter */}
+                    <div className="flex items-center justify-start bg-[#111111] border border-white/5 rounded-[1.5rem] p-2">
+                        <ZohoDatePicker
+                            dateRange={dateRange}
+                            onChange={setDateRange}
+                        />
+                    </div>
+
+                    {/* Summary Stats */}
+                    <div className="grid sm:grid-cols-4 gap-4">
+                        {[
+                            { label: 'Present Days', value: history?.summary?.present || 0, icon: CheckCircle },
+                            { label: 'Absent Days', value: history?.summary?.absent || 0, icon: XCircle },
+                            { label: 'Late Days', value: history?.summary?.late || 0, icon: Clock },
+                            { label: 'Leave Days', value: history?.summary?.onLeave || 0, icon: Calendar },
+                        ].map((stat, i) => (
+                            <div key={i} className="bg-[#111111] border border-white/5 rounded-[1.5rem] p-6 flex flex-col justify-between">
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className="p-3 rounded-full bg-zinc-900 border border-white/5 text-lime">
+                                        <stat.icon className="h-6 w-6" />
+                                    </div>
+                                    <span className="text-4xl font-extrabold text-white tracking-tighter">{stat.value}</span>
+                                </div>
+                                <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">{stat.label}</p>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Attendance Records Table */}
+                    {isLoading ? (
+                        <div className="bg-[#111111] border border-white/5 rounded-[2rem] p-12 text-center text-zinc-500 animate-pulse">
+                            Loading records...
+                        </div>
+                    ) : (
+                        <DataTable columns={columns} data={filteredHistoryItems} />
+                    )}
+                </>
             ) : (
-                <DataTable columns={columns} data={filteredHistoryItems} />
+                <RegularizationList
+                    requests={regularizations || []}
+                    isAdmin={isAdmin}
+                    onUpdate={refetchRequests}
+                />
             )}
 
             {/* Location Modal */}
@@ -294,6 +360,12 @@ export default function AttendancePage() {
                     </div>
                 </div>
             )}
+
+            <CorrectionRequestModal
+                isOpen={isCorrectionOpen}
+                onClose={() => setIsCorrectionOpen(false)}
+                onSuccess={refetchRequests}
+            />
         </div>
     );
 }
