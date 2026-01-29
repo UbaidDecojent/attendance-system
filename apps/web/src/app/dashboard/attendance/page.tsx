@@ -10,16 +10,35 @@ import {
     XCircle,
     MapPin,
     X,
-    AlertTriangle
+    AlertTriangle,
+    ArrowLeft,
+    CalendarDays,
+    Users,
+    UserCheck,
+    UserX,
+    TimerOff
 } from 'lucide-react';
 import { attendanceApi } from '@/lib/api/attendance';
 import { formatDate, formatTime, cn } from '@/lib/utils';
-import { format, startOfMonth, endOfMonth, differenceInCalendarDays } from 'date-fns';
+import { format, startOfMonth, endOfMonth, differenceInCalendarDays, getDay } from 'date-fns';
 import { DataTable } from '@/components/data-table';
 import { ColumnDef } from '@tanstack/react-table';
 import ZohoDatePicker from '@/components/ui/zoho-date-picker';
 import { CorrectionRequestModal } from '@/components/dashboard/attendance/correction-request-modal';
 import { RegularizationList } from '@/components/dashboard/attendance/regularization-list';
+
+// Interface for date-wise aggregated stats (Admin view)
+interface DateStats {
+    date: string;
+    dateObj: Date;
+    totalEmployees: number;
+    present: number;
+    absent: number;
+    late: number;
+    halfday: number;
+    onTime: number;
+    records: any[];
+}
 
 export default function AttendancePage() {
     const user = useAuthStore((state) => state.user);
@@ -33,10 +52,13 @@ export default function AttendancePage() {
     const [isCorrectionOpen, setIsCorrectionOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<'history' | 'requests'>('history');
 
+    // For Admin: track which date card is selected (null = showing cards view)
+    const [selectedDateForTable, setSelectedDateForTable] = useState<string | null>(null);
+
     const { data: history, isLoading } = useQuery({
         queryKey: ['attendanceHistory', startDate, endDate, isAdmin],
         queryFn: () => isAdmin
-            ? attendanceApi.getHistory({ startDate, endDate, limit: 100 })
+            ? attendanceApi.getHistory({ startDate, endDate, limit: 500 })
             : attendanceApi.getMyHistory({ startDate, endDate, limit: 100 }),
     });
 
@@ -54,6 +76,7 @@ export default function AttendancePage() {
         return [];
     }, [regularizationsData]);
 
+    // Employee view: filtered history items
     const filteredHistoryItems = useMemo(() => {
         if (!history?.items) return [];
         return history.items
@@ -61,6 +84,83 @@ export default function AttendancePage() {
             .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [history]);
 
+    // Admin view: aggregate attendance by date
+    const dateWiseStats = useMemo<DateStats[]>(() => {
+        if (!isAdmin || !history?.items || history.items.length === 0) return [];
+
+        const dateMap = new Map<string, DateStats>();
+
+        // Group records by date
+        history.items.forEach((record: any) => {
+            const dateStr = format(new Date(record.date), 'yyyy-MM-dd');
+            const dateObj = new Date(record.date);
+
+            // Skip weekends (Saturday = 6, Sunday = 0)
+            const dayOfWeek = getDay(dateObj);
+            if (dayOfWeek === 0 || dayOfWeek === 6) return;
+
+            // Skip future dates
+            if (differenceInCalendarDays(dateObj, new Date()) > 0) return;
+
+            if (!dateMap.has(dateStr)) {
+                dateMap.set(dateStr, {
+                    date: dateStr,
+                    dateObj,
+                    totalEmployees: 0,
+                    present: 0,
+                    absent: 0,
+                    late: 0,
+                    halfday: 0,
+                    onTime: 0,
+                    records: []
+                });
+            }
+
+            const stats = dateMap.get(dateStr)!;
+            stats.records.push(record);
+            stats.totalEmployees++;
+
+            if (record.status === 'PRESENT') {
+                stats.present++;
+
+                // Check if halfday (worked less than 5 hours)
+                if (record.totalWorkMinutes && record.totalWorkMinutes < 300) {
+                    stats.halfday++;
+                }
+
+                // Check if late
+                const shiftStart = record.employee?.shift?.startTime;
+                if (record.checkInTime && shiftStart) {
+                    const actual = new Date(record.checkInTime);
+                    const [h, m] = shiftStart.split(':').map(Number);
+                    const shiftDate = new Date(actual);
+                    shiftDate.setHours(h, m, 0, 0);
+                    const diff = Math.floor((actual.getTime() - shiftDate.getTime()) / 60000);
+                    if (diff > 15) {
+                        stats.late++;
+                    } else {
+                        stats.onTime++;
+                    }
+                }
+            } else if (record.status === 'ABSENT') {
+                stats.absent++;
+            } else if (record.status === 'HALF_DAY') {
+                stats.halfday++;
+                stats.present++;
+            }
+        });
+
+        // Convert to array and sort by date descending
+        return Array.from(dateMap.values())
+            .sort((a, b) => b.dateObj.getTime() - a.dateObj.getTime());
+    }, [isAdmin, history]);
+
+    // Admin view: records for selected date
+    const selectedDateRecords = useMemo(() => {
+        if (!selectedDateForTable || !isAdmin) return [];
+        const stats = dateWiseStats.find(d => d.date === selectedDateForTable);
+        return stats?.records || [];
+    }, [selectedDateForTable, dateWiseStats, isAdmin]);
 
     const [selectedLocation, setSelectedLocation] = useState<any>(null);
 
@@ -228,6 +328,49 @@ export default function AttendancePage() {
         return cols;
     }, [isAdmin]);
 
+    // Reset selected date when date range changes
+    const handleDateRangeChange = (newRange: { from: Date; to: Date }) => {
+        setDateRange(newRange);
+        setSelectedDateForTable(null);
+    };
+
+    // Get status badges for a date card (returns array for multiple badges)
+    const getDateStatusBadges = (stats: DateStats) => {
+        const badges: { text: string; type: 'late' | 'absent' | 'halfday' | 'ontime' }[] = [];
+
+        if (stats.late > 0) {
+            badges.push({ text: `${stats.late} Late`, type: 'late' });
+        }
+        if (stats.absent > 0) {
+            badges.push({ text: `${stats.absent} Absent`, type: 'absent' });
+        }
+        if (stats.halfday > 0) {
+            badges.push({ text: `${stats.halfday} Halfday`, type: 'halfday' });
+        }
+
+        // If no issues, show "All On Time"
+        if (badges.length === 0) {
+            badges.push({ text: 'All On Time', type: 'ontime' });
+        }
+
+        return badges;
+    };
+
+    // Get badge styling based on type
+    const getBadgeStyles = (type: 'late' | 'absent' | 'halfday' | 'ontime') => {
+        switch (type) {
+            case 'late':
+                return { bg: 'bg-amber-400/15', text: 'text-amber-400', dot: 'bg-amber-400' };
+            case 'absent':
+                return { bg: 'bg-red-400/15', text: 'text-red-400', dot: 'bg-red-400' };
+            case 'halfday':
+                return { bg: 'bg-zinc-400/15', text: 'text-zinc-400', dot: 'bg-zinc-400' };
+            case 'ontime':
+            default:
+                return { bg: 'bg-lime/15', text: 'text-lime', dot: 'bg-lime' };
+        }
+    };
+
     return (
         <div className="space-y-6">
             {/* Page Header */}
@@ -282,37 +425,184 @@ export default function AttendancePage() {
                     <div className="flex items-center justify-start bg-[#111111] border border-white/5 rounded-[1.5rem] p-2">
                         <ZohoDatePicker
                             dateRange={dateRange}
-                            onChange={setDateRange}
+                            onChange={handleDateRangeChange}
                         />
                     </div>
 
-                    {/* Summary Stats */}
-                    <div className="grid sm:grid-cols-4 gap-4">
-                        {[
-                            { label: 'Present Days', value: history?.summary?.present || 0, icon: CheckCircle },
-                            { label: 'Absent Days', value: history?.summary?.absent || 0, icon: XCircle },
-                            { label: 'Late Days', value: history?.summary?.late || 0, icon: Clock },
-                            { label: 'Leave Days', value: history?.summary?.onLeave || 0, icon: Calendar },
-                        ].map((stat, i) => (
-                            <div key={i} className="bg-[#111111] border border-white/5 rounded-[1.5rem] p-6 flex flex-col justify-between">
-                                <div className="flex items-start justify-between mb-4">
-                                    <div className="p-3 rounded-full bg-zinc-900 border border-white/5 text-lime">
-                                        <stat.icon className="h-6 w-6" />
-                                    </div>
-                                    <span className="text-4xl font-extrabold text-white tracking-tighter">{stat.value}</span>
-                                </div>
-                                <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">{stat.label}</p>
-                            </div>
-                        ))}
-                    </div>
+                    {/* ADMIN VIEW: Date Cards + Table on click */}
+                    {isAdmin ? (
+                        <>
+                            {/* Back button when viewing a specific date */}
+                            {selectedDateForTable && (
+                                <button
+                                    onClick={() => setSelectedDateForTable(null)}
+                                    className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors text-sm font-medium"
+                                >
+                                    <ArrowLeft className="h-4 w-4" />
+                                    Back to all dates
+                                </button>
+                            )}
 
-                    {/* Attendance Records Table */}
-                    {isLoading ? (
-                        <div className="bg-[#111111] border border-white/5 rounded-[2rem] p-12 text-center text-zinc-500 animate-pulse">
-                            Loading records...
-                        </div>
+                            {isLoading ? (
+                                <div className="bg-[#111111] border border-white/5 rounded-[2rem] p-12 text-center text-zinc-500 animate-pulse">
+                                    Loading records...
+                                </div>
+                            ) : selectedDateForTable ? (
+                                /* Table view for selected date */
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-3 rounded-xl bg-lime/10 border border-lime/20">
+                                            <CalendarDays className="h-5 w-5 text-lime" />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-lg font-bold text-white">
+                                                {formatDate(selectedDateForTable, 'EEEE, MMMM d, yyyy')}
+                                            </h2>
+                                            <p className="text-sm text-zinc-500">
+                                                {selectedDateRecords.length} employee records
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <DataTable columns={columns} data={selectedDateRecords} />
+                                </div>
+                            ) : dateWiseStats.length === 0 ? (
+                                /* No attendance data */
+                                <div className="bg-[#111111] border border-white/5 rounded-[2rem] p-12 text-center">
+                                    <CalendarDays className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
+                                    <h3 className="text-lg font-bold text-white mb-2">No Attendance Records</h3>
+                                    <p className="text-zinc-500 text-sm">
+                                        No attendance was marked during the selected period.
+                                    </p>
+                                </div>
+                            ) : (
+                                /* Date Cards Grid - 4 per row */
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                                    {dateWiseStats.map((stats) => {
+                                        const badges = getDateStatusBadges(stats);
+                                        // Border color based on priority: absent > late > halfday > ontime
+                                        const borderColor = stats.absent > 0 ? 'border-l-red-400' :
+                                            stats.late > 0 ? 'border-l-amber-400' :
+                                                stats.halfday > 0 ? 'border-l-zinc-400' : 'border-l-lime';
+                                        return (
+                                            <button
+                                                key={stats.date}
+                                                onClick={() => setSelectedDateForTable(stats.date)}
+                                                className={cn(
+                                                    "group bg-[#111111] border-l-[8px] border border-white/5 rounded-xl text-left transition-all hover:bg-[#151515]",
+                                                    borderColor
+                                                )}
+                                            >
+                                                <div className="p-4">
+                                                    {/* Row 1: Date + Status Badges */}
+                                                    <div className="flex items-center justify-between mb-5 gap-2">
+                                                        <h3 className="text-sm font-bold text-white">
+                                                            {format(stats.dateObj, 'EEE, MMM d, yyyy')}
+                                                        </h3>
+                                                        <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                                                            {badges.slice(0, 2).map((badge, idx) => {
+                                                                const styles = getBadgeStyles(badge.type);
+                                                                return (
+                                                                    <span
+                                                                        key={idx}
+                                                                        className={cn(
+                                                                            'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold',
+                                                                            styles.bg, styles.text
+                                                                        )}
+                                                                    >
+                                                                        <span className={cn('w-1.5 h-1.5 rounded-full', styles.dot)} />
+                                                                        {badge.text}
+                                                                    </span>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Row 2: Stats - Evenly distributed with flex */}
+                                                    <div className="flex justify-between mb-5">
+                                                        {/* Present */}
+                                                        <div className="text-center flex-1">
+                                                            <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                                                                <span className="w-2 h-2 rounded-full bg-lime" />
+                                                                <p className="text-[11px] text-zinc-400 font-medium">Present</p>
+                                                            </div>
+                                                            <p className="text-xl font-bold text-white">{stats.present}</p>
+                                                        </div>
+
+                                                        {/* Absent */}
+                                                        <div className="text-center flex-1">
+                                                            <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                                                                <span className="w-2 h-2 rounded-full bg-red-400" />
+                                                                <p className="text-[11px] text-zinc-400 font-medium">Absent</p>
+                                                            </div>
+                                                            <p className="text-xl font-bold text-white">{stats.absent}</p>
+                                                        </div>
+
+                                                        {/* Late */}
+                                                        <div className="text-center flex-1">
+                                                            <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                                                                <span className="w-2 h-2 rounded-full bg-amber-400" />
+                                                                <p className="text-[11px] text-zinc-400 font-medium">Late</p>
+                                                            </div>
+                                                            <p className="text-xl font-bold text-white">{stats.late}</p>
+                                                        </div>
+
+                                                        {/* Halfday - Split circle */}
+                                                        <div className="text-center flex-1">
+                                                            <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                                                                <span
+                                                                    className="w-2 h-2 rounded-full"
+                                                                    style={{ background: 'conic-gradient(#a3e635 0deg 180deg, #525252 180deg 360deg)' }}
+                                                                />
+                                                                <p className="text-[11px] text-zinc-400 font-medium">Halfday</p>
+                                                            </div>
+                                                            <p className="text-xl font-bold text-white">{stats.halfday}</p>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Row 3: Total Employees */}
+                                                    <div className="flex items-center justify-between pt-3 border-t border-white/5">
+                                                        <span className="text-xs text-zinc-500">Total Employees</span>
+                                                        <span className="text-xs font-bold text-white">{stats.totalEmployees}</span>
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </>
                     ) : (
-                        <DataTable columns={columns} data={filteredHistoryItems} />
+                        /* EMPLOYEE VIEW: Original table view with summary stats */
+                        <>
+                            {/* Summary Stats for Employee */}
+                            <div className="grid sm:grid-cols-4 gap-4">
+                                {[
+                                    { label: 'Present Days', value: history?.summary?.present || 0, icon: CheckCircle },
+                                    { label: 'Absent Days', value: history?.summary?.absent || 0, icon: XCircle },
+                                    { label: 'Late Days', value: history?.summary?.late || 0, icon: Clock },
+                                    { label: 'Leave Days', value: history?.summary?.onLeave || 0, icon: Calendar },
+                                ].map((stat, i) => (
+                                    <div key={i} className="bg-[#111111] border border-white/5 rounded-[1.5rem] p-6 flex flex-col justify-between">
+                                        <div className="flex items-start justify-between mb-4">
+                                            <div className="p-3 rounded-full bg-zinc-900 border border-white/5 text-lime">
+                                                <stat.icon className="h-6 w-6" />
+                                            </div>
+                                            <span className="text-4xl font-extrabold text-white tracking-tighter">{stat.value}</span>
+                                        </div>
+                                        <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">{stat.label}</p>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Attendance Records Table for Employee */}
+                            {isLoading ? (
+                                <div className="bg-[#111111] border border-white/5 rounded-[2rem] p-12 text-center text-zinc-500 animate-pulse">
+                                    Loading records...
+                                </div>
+                            ) : (
+                                <DataTable columns={columns} data={filteredHistoryItems} />
+                            )}
+                        </>
                     )}
                 </>
             ) : (
