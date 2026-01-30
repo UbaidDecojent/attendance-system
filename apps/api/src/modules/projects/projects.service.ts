@@ -26,19 +26,24 @@ export class ProjectsService {
             }
         });
 
-        // Send Notification
+        // Send Notification (wrapped in try-catch to avoid blocking project creation)
         if (owner.user) {
-            await this.prisma.notification.create({
-                data: {
-                    companyId,
-                    userId: owner.user.id,
-                    type: 'PROJECT_ASSIGNED',
-                    title: 'New Project Assigned',
-                    message: `You have been assigned as the owner of project "${project.title}"`,
-                    entityId: project.id,
-                    entityType: 'project'
-                }
-            });
+            try {
+                await this.prisma.notification.create({
+                    data: {
+                        companyId,
+                        userId: owner.user.id,
+                        type: 'PROJECT_ASSIGNED',
+                        title: 'New Project Assigned',
+                        message: `You have been assigned as the owner of project "${project.title}"`,
+                        entityId: project.id,
+                        entityType: 'project'
+                    }
+                });
+            } catch (error) {
+                console.error('Failed to send project assignment notification:', error);
+                // Continue - project was still created successfully
+            }
         }
 
         return project;

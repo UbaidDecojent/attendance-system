@@ -585,9 +585,7 @@ export default function DashboardPage() {
                             <div className="bg-[#111111] border border-white/5 rounded-[2.5rem] p-8 flex flex-col justify-between h-full min-h-[320px]">
                                 <div className="flex items-center justify-between mb-8">
                                     <h3 className="text-xl font-bold text-white">Daily Stats</h3>
-                                    <button className="px-3 py-1 bg-zinc-900 border border-white/10 rounded-full text-xs font-bold text-zinc-400">
-                                        Weekly
-                                    </button>
+
                                 </div>
 
                                 <div className="flex-1 flex flex-col justify-between space-y-6">
@@ -603,18 +601,33 @@ export default function DashboardPage() {
                                             </p>
                                         </div>
 
-                                        <div className="grid grid-cols-4 gap-2 mt-6">
-                                            {Array.from({ length: 12 }).map((_, i) => (
-                                                <div
-                                                    key={i}
-                                                    className={cn(
-                                                        "h-3 rounded-full w-full",
-                                                        i < ((dashboardStats?.today?.present || 0) / (dashboardStats?.today?.totalEmployees || 1) * 12)
-                                                            ? "bg-lime"
-                                                            : "bg-zinc-800"
-                                                    )}
-                                                />
-                                            ))}
+                                        <div className="grid grid-cols-5 gap-2 mt-6">
+                                            {Array.from({ length: 10 }).map((_, i) => {
+                                                const total = dashboardStats?.today?.totalEmployees || 1;
+                                                const late = dashboardStats?.today?.late || 0;
+                                                const present = dashboardStats?.today?.present || 0; // Includes late
+                                                const onTime = Math.max(0, present - late);
+                                                const leave = dashboardStats?.today?.onLeave || 0;
+
+                                                // Calculate cumulative thresholds (0-10 scale)
+                                                // Order: OnTime -> Late -> Leave -> Absent
+                                                const onTimeThreshold = (onTime / total) * 10;
+                                                const lateThreshold = ((onTime + late) / total) * 10;
+                                                const leaveThreshold = ((onTime + late + leave) / total) * 10;
+
+                                                let barColor = "bg-zinc-800"; // Default (Absent)
+
+                                                if (i < onTimeThreshold) barColor = "bg-lime";
+                                                else if (i < lateThreshold) barColor = "bg-amber-400";
+                                                else if (i < leaveThreshold) barColor = "bg-blue-400";
+
+                                                return (
+                                                    <div
+                                                        key={i}
+                                                        className={cn("h-3 rounded-full w-full transition-colors duration-500", barColor)}
+                                                    />
+                                                );
+                                            })}
                                         </div>
                                     </div>
 
