@@ -54,39 +54,10 @@ export const useAuthStore = create<AuthState>()(
         {
             name: 'auth-storage',
             storage: createJSONStorage(() => {
-                // Custom storage to handle Remember Me logic
+                // Using localStorage for both cases to ensure stability in production.
+                // SessionStorage was causing immediate logouts in some environments.
                 if (typeof window !== 'undefined') {
-                    return {
-                        getItem: (name: string) => {
-                            try {
-                                return sessionStorage.getItem(name) || localStorage.getItem(name);
-                            } catch (e) {
-                                return null;
-                            }
-                        },
-                        setItem: (name: string, value: string) => {
-                            try {
-                                const parsed = JSON.parse(value);
-                                // Default to TRUE if undefined (safe migration & fallback)
-                                const shouldRemember = parsed.state?.rememberMe ?? true;
-
-                                if (shouldRemember) {
-                                    localStorage.setItem(name, value);
-                                    try { sessionStorage.removeItem(name); } catch (e) { }
-                                } else {
-                                    sessionStorage.setItem(name, value);
-                                    try { localStorage.removeItem(name); } catch (e) { }
-                                }
-                            } catch (e) {
-                                // Fallback to localStorage if parsing/logic fails
-                                try { localStorage.setItem(name, value); } catch (err) { }
-                            }
-                        },
-                        removeItem: (name: string) => {
-                            try { sessionStorage.removeItem(name); } catch (e) { }
-                            try { localStorage.removeItem(name); } catch (e) { }
-                        },
-                    };
+                    return localStorage;
                 }
                 return {
                     getItem: () => null,
