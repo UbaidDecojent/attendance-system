@@ -20,7 +20,7 @@ import { TwoFactorService } from './services/two-factor.service';
             useFactory: (configService: ConfigService) => ({
                 secret: configService.get<string>('JWT_SECRET'),
                 signOptions: {
-                    expiresIn: configService.get<string>('JWT_EXPIRATION') || '15m',
+                    expiresIn: configService.get<string>('JWT_EXPIRATION') || '1d',
                 },
             }),
         }),

@@ -210,9 +210,13 @@ export default function AttendancePage() {
                         const absDiff = Math.abs(diff);
                         const formatDuration = (mins: number) => mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m`;
 
-                        if (diff < 0) statusLabel = { text: `Early: ${formatDuration(absDiff)}`, color: 'text-lime' };
-                        else if (diff > 15) statusLabel = { text: `Late: ${formatDuration(diff)}`, color: 'text-red-500' };
-                        else statusLabel = { text: 'On Time', color: 'text-zinc-500' };
+                        if (diff <= 15) {
+                            // Early or within grace period -> On Time (Green)
+                            statusLabel = { text: 'On Time', color: 'text-lime' };
+                        } else {
+                            // Late -> Red with duration
+                            statusLabel = { text: `Late: ${formatDuration(diff)}`, color: 'text-red-500' };
+                        }
                     }
 
                     return record.checkInTime ? (
@@ -301,11 +305,51 @@ export default function AttendancePage() {
             {
                 accessorKey: 'totalWorkMinutes',
                 header: 'Hours',
-                cell: ({ row }) => (
-                    <span className="font-bold text-zinc-300">
-                        {Math.floor(row.original.totalWorkMinutes / 60)}h {row.original.totalWorkMinutes % 60}m
-                    </span>
-                ),
+                cell: ({ row }) => {
+                    const record = row.original;
+                    const workMinutes = record.totalWorkMinutes;
+
+                    if (!workMinutes) return <span className="font-bold text-zinc-600">--</span>;
+
+                    const hours = Math.floor(workMinutes / 60);
+                    const minutes = workMinutes % 60;
+
+                    let remainingElement = null;
+
+                    // Only calculate if checkout exists (shift completed)
+                    if (record.checkOutTime && record.employee?.shift?.startTime && record.employee?.shift?.endTime) {
+                        const [startH, startM] = record.employee.shift.startTime.split(':').map(Number);
+                        const [endH, endM] = record.employee.shift.endTime.split(':').map(Number);
+
+                        let shiftMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+                        if (shiftMinutes < 0) shiftMinutes += 24 * 60; // Handle overnight shift
+
+                        if (workMinutes < shiftMinutes) {
+                            const diff = shiftMinutes - workMinutes;
+                            const diffH = Math.floor(diff / 60);
+                            const diffM = diff % 60;
+
+                            // Only show if meaningful difference (> 1 min)
+                            if (diff > 1) {
+                                remainingElement = (
+                                    <div className="text-[10px] text-red-500 font-extrabold mt-0.5 flex items-center gap-1">
+                                        <TimerOff className="h-3 w-3" />
+                                        {diffH > 0 && `${diffH}h `}{diffM}m remaining
+                                    </div>
+                                );
+                            }
+                        }
+                    }
+
+                    return (
+                        <div className="flex flex-col">
+                            <span className="font-bold text-zinc-300">
+                                {hours}h {minutes}m
+                            </span>
+                            {remainingElement}
+                        </div>
+                    );
+                },
             },
             {
                 accessorKey: 'status',
@@ -586,24 +630,7 @@ export default function AttendancePage() {
                         /* EMPLOYEE VIEW: Original table view with summary stats */
                         <>
                             {/* Summary Stats for Employee */}
-                            <div className="grid sm:grid-cols-4 gap-4">
-                                {[
-                                    { label: 'Present Days', value: history?.summary?.present || 0, icon: CheckCircle },
-                                    { label: 'Absent Days', value: history?.summary?.absent || 0, icon: XCircle },
-                                    { label: 'Late Days', value: history?.summary?.late || 0, icon: Clock },
-                                    { label: 'Leave Days', value: history?.summary?.onLeave || 0, icon: Calendar },
-                                ].map((stat, i) => (
-                                    <div key={i} className="bg-[#111111] border border-white/5 rounded-[1.5rem] p-6 flex flex-col justify-between">
-                                        <div className="flex items-start justify-between mb-4">
-                                            <div className="p-3 rounded-full bg-zinc-900 border border-white/5 text-lime">
-                                                <stat.icon className="h-6 w-6" />
-                                            </div>
-                                            <span className="text-4xl font-extrabold text-white tracking-tighter">{stat.value}</span>
-                                        </div>
-                                        <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">{stat.label}</p>
-                                    </div>
-                                ))}
-                            </div>
+
 
                             {/* Attendance Records Table for Employee */}
                             {isLoading ? (
