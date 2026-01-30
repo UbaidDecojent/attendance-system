@@ -134,6 +134,12 @@ export class AttendanceController {
         );
     }
 
+    @Get('regularization/limit')
+    @ApiOperation({ summary: 'Get remaining correction requests for current month' })
+    async getRegularizationLimit(@CurrentUser() user: any) {
+        return this.attendanceService.getRegularizationLimit(user.employee?.id);
+    }
+
     @Get('regularization')
     @ApiOperation({ summary: 'Get regularization requests' })
     @ApiQuery({ name: 'status', required: false })

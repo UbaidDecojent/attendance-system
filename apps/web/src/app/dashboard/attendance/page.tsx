@@ -50,7 +50,7 @@ export default function AttendancePage() {
     const startDate = format(dateRange.from, 'yyyy-MM-dd');
     const endDate = format(dateRange.to, 'yyyy-MM-dd');
     const [isCorrectionOpen, setIsCorrectionOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState<'history' | 'requests'>('history');
+    const [activeTab, setActiveTab] = useState<'history' | 'requests' | 'archived'>('history');
 
     // For Admin: track which date card is selected (null = showing cards view)
     const [selectedDateForTable, setSelectedDateForTable] = useState<string | null>(null);
@@ -417,6 +417,17 @@ export default function AttendancePage() {
                         </span>
                     )}
                 </button>
+                {(isAdmin || regularizations?.some((r: any) => r.status !== 'PENDING')) && (
+                    <button
+                        onClick={() => setActiveTab('archived')}
+                        className={cn(
+                            "px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2",
+                            activeTab === 'archived' ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-500 hover:text-white"
+                        )}
+                    >
+                        Archived
+                    </button>
+                )}
             </div>
 
             {activeTab === 'history' ? (
@@ -475,8 +486,8 @@ export default function AttendancePage() {
                                     </p>
                                 </div>
                             ) : (
-                                /* Date Cards Grid - 4 per row */
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                                /* Date Cards Grid - Responsive layout */
+                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
                                     {dateWiseStats.map((stats) => {
                                         const badges = getDateStatusBadges(stats);
                                         // Border color based on priority: absent > late > halfday > ontime
@@ -605,9 +616,15 @@ export default function AttendancePage() {
                         </>
                     )}
                 </>
+            ) : activeTab === 'requests' ? (
+                <RegularizationList
+                    requests={regularizations ? regularizations.filter((r: any) => r.status === 'PENDING') : []}
+                    isAdmin={isAdmin}
+                    onUpdate={refetchRequests}
+                />
             ) : (
                 <RegularizationList
-                    requests={regularizations || []}
+                    requests={regularizations ? regularizations.filter((r: any) => r.status !== 'PENDING') : []}
                     isAdmin={isAdmin}
                     onUpdate={refetchRequests}
                 />

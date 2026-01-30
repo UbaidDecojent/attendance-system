@@ -864,9 +864,9 @@ export class AttendanceService {
             where: { companyId, isActive: true },
         });
 
-        // Today's stats
+        // Today's stats - use date range to handle timezone differences
         const todayRecords = await this.prisma.attendanceRecord.findMany({
-            where: { companyId, date: dayStart },
+            where: { companyId, date: { gte: dayStart, lte: dayEnd } },
         });
 
         const presentToday = todayRecords.filter(
@@ -952,6 +952,35 @@ export class AttendanceService {
     // ==================== REGULARIZATION ====================
 
     async createRegularization(companyId: string, employeeId: string, dto: CreateRegularizationDto) {
+        // Monthly limit: 3 requests per employee per month
+        const MONTHLY_LIMIT = 3;
+
+        const now = new Date();
+        const monthStart = startOfMonth(now);
+        const monthEnd = endOfMonth(now);
+
+        // Count requests made this month by this employee
+        const requestsThisMonth = await this.prisma.regularizationRequest.count({
+            where: {
+                employeeId,
+                createdAt: {
+                    gte: monthStart,
+                    lte: monthEnd,
+                },
+                status: {
+                    not: 'REJECTED'
+                }
+            },
+        });
+
+        if (requestsThisMonth >= MONTHLY_LIMIT) {
+            const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+            const nextMonthName = format(nextMonth, 'MMMM d');
+            throw new BadRequestException(
+                `You have reached your monthly limit of ${MONTHLY_LIMIT} correction requests. Your limit will reset on ${nextMonthName}.`
+            );
+        }
+
         // Use UTC Noon to prevent timezone truncation
         const [year, month, day] = dto.date.split('-').map(Number);
         const date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
@@ -982,6 +1011,37 @@ export class AttendanceService {
                 status: 'PENDING'
             }
         });
+    }
+
+    async getRegularizationLimit(employeeId: string) {
+        const MONTHLY_LIMIT = 3;
+
+        const now = new Date();
+        const monthStart = startOfMonth(now);
+        const monthEnd = endOfMonth(now);
+
+        const requestsThisMonth = await this.prisma.regularizationRequest.count({
+            where: {
+                employeeId,
+                createdAt: {
+                    gte: monthStart,
+                    lte: monthEnd,
+                },
+                status: {
+                    not: 'REJECTED'
+                }
+            },
+        });
+
+        const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+        return {
+            used: requestsThisMonth,
+            remaining: Math.max(0, MONTHLY_LIMIT - requestsThisMonth),
+            limit: MONTHLY_LIMIT,
+            resetsOn: format(nextMonth, 'yyyy-MM-dd'),
+            resetsOnFormatted: format(nextMonth, 'MMMM d, yyyy'),
+        };
     }
 
     async getRegularizationRequests(companyId: string, employeeId?: string, status?: string) {

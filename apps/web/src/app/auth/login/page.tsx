@@ -15,6 +15,7 @@ import { authApi } from '@/lib/api/auth';
 const loginSchema = z.object({
     email: z.string().email('Please enter a valid email'),
     password: z.string().min(1, 'Password is required'),
+    rememberMe: z.boolean().default(false).optional(),
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
@@ -26,6 +27,7 @@ export default function LoginPage() {
     const [requires2FA, setRequires2FA] = useState(false);
     const [tempToken, setTempToken] = useState('');
     const [twoFactorCode, setTwoFactorCode] = useState('');
+    const [rememberMePref, setRememberMePref] = useState(false);
     const { setAuth, isAuthenticated, isHydrated } = useAuthStore();
 
     // Redirect if already logged in
@@ -51,9 +53,10 @@ export default function LoginPage() {
             if (response.requires2FA) {
                 setRequires2FA(true);
                 setTempToken(response.tempToken || '');
+                setRememberMePref(data.rememberMe || false);
                 toast.info('Please enter your 2FA code');
             } else {
-                setAuth(response.user, response.accessToken);
+                setAuth(response.user, response.accessToken, data.rememberMe);
                 toast.success('Welcome back!');
                 router.push('/dashboard');
             }
@@ -73,7 +76,7 @@ export default function LoginPage() {
         setIsLoading(true);
         try {
             const response = await authApi.verify2FA(tempToken, twoFactorCode);
-            setAuth(response.user, response.accessToken);
+            setAuth(response.user, response.accessToken, rememberMePref);
             toast.success('Welcome back!');
             router.push('/dashboard');
         } catch (error: any) {
@@ -153,7 +156,11 @@ export default function LoginPage() {
                                 <div className="flex items-center justify-between px-1">
                                     <label className="flex items-center gap-2.5 text-sm text-zinc-400 cursor-pointer group select-none">
                                         <div className="relative flex items-center">
-                                            <input type="checkbox" className="peer sr-only" />
+                                            <input
+                                                type="checkbox"
+                                                {...register('rememberMe')}
+                                                className="peer sr-only"
+                                            />
                                             <div className="w-5 h-5 rounded border-2 border-zinc-700 bg-zinc-900 peer-checked:bg-lime peer-checked:border-lime transition-all"></div>
                                             <svg className="absolute w-3 h-3 text-black opacity-0 peer-checked:opacity-100 left-1 top-1 transition-opacity pointer-events-none" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
                                                 <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />

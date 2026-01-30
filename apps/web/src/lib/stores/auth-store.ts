@@ -17,7 +17,8 @@ interface AuthState {
     accessToken: string | null;
     isAuthenticated: boolean;
     isHydrated: boolean;
-    setAuth: (user: User, token: string) => void;
+    rememberMe: boolean;
+    setAuth: (user: User, token: string, rememberMe?: boolean) => void;
     logout: () => void;
     updateUser: (user: Partial<User>) => void;
     setHydrated: () => void;
@@ -30,9 +31,10 @@ export const useAuthStore = create<AuthState>()(
             accessToken: null,
             isAuthenticated: false,
             isHydrated: false,
+            rememberMe: true, // Default to true
 
-            setAuth: (user, token) => {
-                set({ user, accessToken: token, isAuthenticated: true });
+            setAuth: (user, token, rememberMe = true) => {
+                set({ user, accessToken: token, isAuthenticated: true, rememberMe });
             },
 
             logout: () => {
@@ -52,9 +54,34 @@ export const useAuthStore = create<AuthState>()(
         {
             name: 'auth-storage',
             storage: createJSONStorage(() => {
-                // Only use localStorage on client side
+                // Custom storage to handle Remember Me logic
                 if (typeof window !== 'undefined') {
-                    return localStorage;
+                    return {
+                        getItem: (name: string) => {
+                            return sessionStorage.getItem(name) || localStorage.getItem(name);
+                        },
+                        setItem: (name: string, value: string) => {
+                            try {
+                                const parsed = JSON.parse(value);
+                                const shouldRemember = parsed.state?.rememberMe;
+
+                                if (shouldRemember) {
+                                    localStorage.setItem(name, value);
+                                    sessionStorage.removeItem(name);
+                                } else {
+                                    sessionStorage.setItem(name, value);
+                                    localStorage.removeItem(name);
+                                }
+                            } catch (e) {
+                                // Fallback to localStorage if parsing fails
+                                localStorage.setItem(name, value);
+                            }
+                        },
+                        removeItem: (name: string) => {
+                            sessionStorage.removeItem(name);
+                            localStorage.removeItem(name);
+                        },
+                    };
                 }
                 return {
                     getItem: () => null,
@@ -70,6 +97,7 @@ export const useAuthStore = create<AuthState>()(
                 user: state.user,
                 accessToken: state.accessToken,
                 isAuthenticated: state.isAuthenticated,
+                rememberMe: state.rememberMe,
             }),
         }
     )

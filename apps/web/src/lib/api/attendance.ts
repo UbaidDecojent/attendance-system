@@ -91,6 +91,11 @@ export const attendanceApi = {
         return response.data;
     },
 
+    async getRegularizationLimit() {
+        const response = await api.get('/attendance/regularization/limit');
+        return response.data.data;
+    },
+
     async updateRegularization(id: string, data: { status: string; rejectionReason?: string }) {
         const response = await api.put(`/attendance/regularization/${id}`, data);
         return response.data;
