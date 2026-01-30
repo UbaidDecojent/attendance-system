@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
 import { useForm, Controller } from 'react-hook-form';
@@ -8,7 +8,7 @@ import 'react-quill/dist/quill.snow.css';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { X, Loader2 } from 'lucide-react';
+import { X, Loader2, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { tasksApi, Task } from '@/lib/api/tasks';
 import { projectsApi } from '@/lib/api/projects';
@@ -16,6 +16,123 @@ import { employeesApi } from '@/lib/api/employees';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
+
+// Searchable Multi-Select Component for Assignees
+function AssigneeMultiSelect({
+    employees,
+    selectedIds,
+    onChange
+}: {
+    employees: any[];
+    selectedIds: string[];
+    onChange: (ids: string[]) => void;
+}) {
+    const [isOpen, setIsOpen] = useState(false);
+    const [search, setSearch] = useState('');
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const filteredEmployees = employees.filter((emp: any) =>
+        `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(search.toLowerCase())
+    );
+
+    const toggleEmployee = (id: string) => {
+        if (selectedIds.includes(id)) {
+            onChange(selectedIds.filter(sid => sid !== id));
+        } else {
+            onChange([...selectedIds, id]);
+        }
+    };
+
+    const removeEmployee = (id: string) => {
+        onChange(selectedIds.filter(sid => sid !== id));
+    };
+
+    const selectedEmployees = employees.filter((emp: any) => selectedIds.includes(emp.id));
+
+    return (
+        <div ref={containerRef} className="relative">
+            {/* Selected Chips & Input */}
+            <div
+                onClick={() => setIsOpen(true)}
+                className={`min-h-[52px] px-3 py-2 rounded-xl border bg-zinc-900/50 cursor-text flex flex-wrap gap-2 transition-all ${isOpen ? 'border-lime ring-1 ring-lime' : 'border-white/10'}`}
+            >
+                {selectedEmployees.map((emp: any) => (
+                    <span
+                        key={emp.id}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-lime/20 text-lime text-sm font-medium rounded-lg"
+                    >
+                        {emp.firstName} {emp.lastName}
+                        <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); removeEmployee(emp.id); }}
+                            className="hover:bg-lime/30 rounded p-0.5 transition-colors"
+                        >
+                            <X className="h-3 w-3" />
+                        </button>
+                    </span>
+                ))}
+                <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    onFocus={() => setIsOpen(true)}
+                    placeholder={selectedIds.length === 0 ? "Search and select assignees..." : ""}
+                    className="flex-1 min-w-[120px] bg-transparent text-white text-sm outline-none placeholder:text-zinc-500"
+                />
+            </div>
+
+            {/* Dropdown */}
+            <AnimatePresence>
+                {isOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute z-50 w-full mt-2 bg-[#18181b] border border-white/10 rounded-xl shadow-2xl overflow-hidden"
+                    >
+                        <div className="max-h-48 overflow-y-auto">
+                            {filteredEmployees.length === 0 ? (
+                                <p className="text-zinc-500 text-sm text-center py-4">No employees found</p>
+                            ) : (
+                                filteredEmployees.map((emp: any) => {
+                                    const isSelected = selectedIds.includes(emp.id);
+                                    return (
+                                        <button
+                                            key={emp.id}
+                                            type="button"
+                                            onClick={() => toggleEmployee(emp.id)}
+                                            className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors text-left ${isSelected ? 'bg-lime/10' : ''}`}
+                                        >
+                                            <div className={`h-5 w-5 rounded border flex items-center justify-center transition-colors ${isSelected ? 'bg-lime border-lime' : 'border-white/20 bg-zinc-800'}`}>
+                                                {isSelected && <Check className="h-3 w-3 text-black" />}
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-sm font-medium text-white">{emp.firstName} {emp.lastName}</span>
+                                                <span className="text-xs text-zinc-500">{emp.designation?.name || 'Employee'}</span>
+                                            </div>
+                                        </button>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+}
 
 const taskSchema = z.object({
     name: z.string().min(3, 'Task name must be at least 3 characters'),
@@ -261,27 +378,14 @@ export default function CreateTaskSheet({ isOpen, onClose, taskToEdit }: CreateT
                                 </div>
                             </div>
 
-                            {/* Assignees */}
+                            {/* Assignees - Searchable Multi-Select */}
                             <div>
                                 <label className="text-sm font-semibold text-zinc-300 mb-2 block">Assignees <span className="text-lime">*</span></label>
-                                <div className="border border-white/10 rounded-xl bg-zinc-900/50 p-4 h-40 overflow-y-auto space-y-2">
-                                    {employees.map((emp: any) => (
-                                        <label key={emp.id} className="flex items-center gap-3 p-2 hover:bg-white/5 rounded-lg cursor-pointer transition-colors">
-                                            <input
-                                                type="checkbox"
-                                                value={emp.id}
-                                                checked={(assigneeIds || []).includes(emp.id)}
-                                                onChange={() => toggleAssignee(emp.id)}
-                                                className="h-4 w-4 rounded border-white/20 bg-zinc-800 text-lime focus:ring-lime"
-                                            />
-                                            <div className="flex flex-col">
-                                                <span className="text-sm font-medium text-white">{emp.firstName} {emp.lastName}</span>
-                                                <span className="text-xs text-zinc-500">{emp.designation?.name || 'Employee'}</span>
-                                            </div>
-                                        </label>
-                                    ))}
-                                    {employees.length === 0 && <p className="text-zinc-500 text-sm text-center py-4">No employees found.</p>}
-                                </div>
+                                <AssigneeMultiSelect
+                                    employees={employees}
+                                    selectedIds={assigneeIds || []}
+                                    onChange={(ids) => setValue('assigneeIds', ids)}
+                                />
                                 {errors.assigneeIds && <p className="text-red-500 text-sm mt-1">{errors.assigneeIds.message}</p>}
                             </div>
 
