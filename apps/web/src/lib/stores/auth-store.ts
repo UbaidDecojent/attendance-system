@@ -58,28 +58,33 @@ export const useAuthStore = create<AuthState>()(
                 if (typeof window !== 'undefined') {
                     return {
                         getItem: (name: string) => {
-                            return sessionStorage.getItem(name) || localStorage.getItem(name);
+                            try {
+                                return sessionStorage.getItem(name) || localStorage.getItem(name);
+                            } catch (e) {
+                                return null;
+                            }
                         },
                         setItem: (name: string, value: string) => {
                             try {
                                 const parsed = JSON.parse(value);
-                                const shouldRemember = parsed.state?.rememberMe;
+                                // Default to TRUE if undefined (safe migration & fallback)
+                                const shouldRemember = parsed.state?.rememberMe ?? true;
 
                                 if (shouldRemember) {
                                     localStorage.setItem(name, value);
-                                    sessionStorage.removeItem(name);
+                                    try { sessionStorage.removeItem(name); } catch (e) { }
                                 } else {
                                     sessionStorage.setItem(name, value);
-                                    localStorage.removeItem(name);
+                                    try { localStorage.removeItem(name); } catch (e) { }
                                 }
                             } catch (e) {
-                                // Fallback to localStorage if parsing fails
-                                localStorage.setItem(name, value);
+                                // Fallback to localStorage if parsing/logic fails
+                                try { localStorage.setItem(name, value); } catch (err) { }
                             }
                         },
                         removeItem: (name: string) => {
-                            sessionStorage.removeItem(name);
-                            localStorage.removeItem(name);
+                            try { sessionStorage.removeItem(name); } catch (e) { }
+                            try { localStorage.removeItem(name); } catch (e) { }
                         },
                     };
                 }
