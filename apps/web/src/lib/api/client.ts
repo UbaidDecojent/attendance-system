@@ -79,7 +79,12 @@ api.interceptors.response.use(
                 const response = await api.post('/auth/refresh');
                 const { accessToken } = response.data.data;
 
+                // Update both localStorage (fallback) AND Zustand store (primary)
                 localStorage.setItem('accessToken', accessToken);
+
+                // Update Zustand store so subsequent requests use the new token
+                const { useAuthStore } = await import('@/lib/stores/auth-store');
+                useAuthStore.getState().updateAccessToken(accessToken);
 
                 if (originalRequest.headers) {
                     originalRequest.headers.Authorization = `Bearer ${accessToken}`;
