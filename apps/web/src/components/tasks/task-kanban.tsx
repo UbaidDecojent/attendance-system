@@ -1,16 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { DndContext, DragOverlay, useDraggable, useDroppable, closestCorners } from '@dnd-kit/core';
+import { DndContext, DragOverlay, useDraggable, useDroppable, closestCorners, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
 import { Task, TaskStatus } from '@/lib/api/tasks';
 import { format } from 'date-fns';
-import { Pencil } from 'lucide-react';
+import { Pencil, CornerDownRight } from 'lucide-react';
+import { useAuthStore } from '@/lib/stores/auth-store';
 
 interface TaskKanbanProps {
     tasks: Task[];
     isLoading: boolean;
     onStatusChange: (id: string, newStatus: TaskStatus) => void;
     onEdit?: (task: Task) => void;
+    onViewDetails?: (taskId: string) => void;
 }
 
 const COLUMNS: { id: TaskStatus; title: string }[] = [
@@ -21,7 +23,7 @@ const COLUMNS: { id: TaskStatus; title: string }[] = [
     { id: 'COMPLETED', title: 'Completed' },
 ];
 
-export default function TaskKanban({ tasks, isLoading, onStatusChange, onEdit }: TaskKanbanProps) {
+export default function TaskKanban({ tasks, isLoading, onStatusChange, onEdit, onViewDetails }: TaskKanbanProps) {
     const [activeId, setActiveId] = useState<string | null>(null);
 
     const handleDragStart = (event: any) => {
@@ -49,10 +51,18 @@ export default function TaskKanban({ tasks, isLoading, onStatusChange, onEdit }:
         setActiveId(null);
     };
 
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        })
+    );
+
     if (isLoading) return <div className="p-8 text-center text-zinc-500">Loading board...</div>;
 
     return (
-        <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} collisionDetection={closestCorners}>
+        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} collisionDetection={closestCorners}>
             <div className="flex h-full gap-4 overflow-x-auto pb-4">
                 {COLUMNS.map((col) => (
                     <KanbanColumn
@@ -61,6 +71,7 @@ export default function TaskKanban({ tasks, isLoading, onStatusChange, onEdit }:
                         title={col.title}
                         tasks={tasks.filter(t => t.status === col.id)}
                         onEdit={onEdit}
+                        onViewDetails={onViewDetails}
                     />
                 ))}
             </div>
@@ -79,7 +90,7 @@ export default function TaskKanban({ tasks, isLoading, onStatusChange, onEdit }:
     );
 }
 
-function KanbanColumn({ id, title, tasks, onEdit }: { id: string; title: string; tasks: Task[], onEdit?: (task: Task) => void }) {
+function KanbanColumn({ id, title, tasks, onEdit, onViewDetails }: { id: string; title: string; tasks: Task[], onEdit?: (task: Task) => void, onViewDetails?: (taskId: string) => void }) {
     const { setNodeRef } = useDroppable({ id });
 
     return (
@@ -90,7 +101,7 @@ function KanbanColumn({ id, title, tasks, onEdit }: { id: string; title: string;
             </div>
             <div className="p-3 space-y-3 overflow-y-auto flex-1 custom-scrollbar">
                 {tasks.map(task => (
-                    <KanbanCard key={task.id} task={task} onEdit={onEdit} />
+                    <KanbanCard key={task.id} task={task} onEdit={onEdit} onViewDetails={onViewDetails} />
                 ))}
                 {tasks.length === 0 && (
                     <div className="h-24 border-2 border-dashed border-white/5 rounded-xl flex items-center justify-center text-zinc-600 text-xs text-center px-4">
@@ -102,9 +113,13 @@ function KanbanColumn({ id, title, tasks, onEdit }: { id: string; title: string;
     );
 }
 
-function KanbanCard({ task, onEdit }: { task: Task, onEdit?: (task: Task) => void }) {
+function KanbanCard({ task, onEdit, onViewDetails }: { task: Task, onEdit?: (task: Task) => void, onViewDetails?: (taskId: string) => void }) {
+    const { user } = useAuthStore();
+    const isEmployee = user?.role === 'EMPLOYEE';
+
     const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
         id: task.id,
+        disabled: isEmployee,
     });
 
     const style = transform ? {
@@ -117,7 +132,7 @@ function KanbanCard({ task, onEdit }: { task: Task, onEdit?: (task: Task) => voi
             style={style}
             {...listeners}
             {...attributes}
-            onClick={() => onEdit?.(task)}
+            onClick={() => onViewDetails?.(task.id)}
             className={`
                 bg-zinc-800 hover:bg-zinc-800/80 p-4 rounded-xl border border-white/10 shadow-sm cursor-grab active:cursor-grabbing group transition-all
                 ${isDragging ? 'opacity-50' : 'opacity-100'}
@@ -130,20 +145,30 @@ function KanbanCard({ task, onEdit }: { task: Task, onEdit?: (task: Task) => voi
                 `}>
                     {task.priority}
                 </span>
-                <button
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onEdit?.(task);
-                    }}
-                    className="text-zinc-500 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/10 rounded"
-                >
-                    <Pencil className="h-3.5 w-3.5" />
-                </button>
+                {!isEmployee && (
+                    <button
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit?.(task);
+                        }}
+                        className="text-zinc-500 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/10 rounded"
+                    >
+                        <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                )}
             </div>
 
             <h4 className="text-sm font-medium text-white mb-2 line-clamp-2">{task.name}</h4>
-            <div className="text-xs text-zinc-500 mb-3">{task.project?.title}</div>
+            <div className="mb-3 space-y-1">
+                <div className="text-xs text-zinc-500">{task.project?.title}</div>
+                {task.parentTask && (
+                    <div className="text-[10px] text-zinc-400 flex items-center gap-1.5 bg-zinc-900/50 px-1.5 py-1 rounded border border-white/5 w-fit">
+                        <CornerDownRight className="h-3 w-3 text-zinc-600" />
+                        <span className="truncate max-w-[150px]">{task.parentTask.name}</span>
+                    </div>
+                )}
+            </div>
 
             <div className="flex items-center justify-between border-t border-white/5 pt-3 mt-1">
                 <div className="flex -space-x-1.5">

@@ -866,12 +866,18 @@ export class AttendanceService {
 
         // Today's stats - use date range to handle timezone differences
         const todayRecords = await this.prisma.attendanceRecord.findMany({
-            where: { companyId, date: { gte: dayStart, lte: dayEnd } },
+            where: {
+                companyId,
+                date: { gte: dayStart, lte: dayEnd },
+                employee: { isActive: true }
+            },
         });
 
-        const presentToday = todayRecords.filter(
-            (r) => r.status === 'PRESENT' || r.status === 'HALF_DAY',
-        ).length;
+        const presentToday = new Set(
+            todayRecords
+                .filter((r) => r.status === 'PRESENT' || r.status === 'HALF_DAY')
+                .map((r) => r.employeeId)
+        ).size;
         const lateToday = todayRecords.filter((r) => r.lateMinutes > 0).length;
         const onLeaveToday = await this.prisma.leave.count({
             where: {
@@ -879,6 +885,7 @@ export class AttendanceService {
                 status: 'APPROVED',
                 startDate: { lte: dayStart },
                 endDate: { gte: dayStart },
+                employee: { isActive: true }
             },
         });
 
@@ -911,7 +918,7 @@ export class AttendanceService {
                 date: format(targetDate, 'yyyy-MM-dd'),
                 totalEmployees,
                 present: presentToday,
-                absent: totalEmployees - presentToday - onLeaveToday,
+                absent: Math.max(0, totalEmployees - presentToday - onLeaveToday),
                 late: lateToday,
                 onLeave: onLeaveToday,
                 attendanceRate:

@@ -787,6 +787,7 @@ model Task {
   id          String   @id @default(uuid())
   companyId   String
   projectId   String
+  parentTaskId String?  // If set, this task is a subtask of the parent task
   
   name        String
   description String?  @db.Text
@@ -805,11 +806,14 @@ model Task {
   // Relations
   company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parentTask  Task?     @relation("TaskSubtasks", fields: [parentTaskId], references: [id], onDelete: Cascade)
+  subtasks    Task[]    @relation("TaskSubtasks")
   assignees   Employee[] @relation("TaskAssignees")
   timeLogs    TimeLog[]
   
   @@index([companyId])
   @@index([projectId])
+  @@index([parentTaskId])
   @@index([status])
   @@index([priority])
 }

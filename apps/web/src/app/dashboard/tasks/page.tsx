@@ -6,10 +6,11 @@ import { tasksApi, TaskStatus } from '@/lib/api/tasks';
 import { projectsApi } from '@/lib/api/projects';
 import { employeesApi } from '@/lib/api/employees';
 import { useAuthStore } from '@/lib/stores/auth-store';
-import { Plus, LayoutList, Kanban, Filter, X } from 'lucide-react';
+import { Plus, LayoutList, Kanban, Filter } from 'lucide-react';
 import TaskList from '@/components/tasks/task-list';
 import TaskKanban from '@/components/tasks/task-kanban';
 import CreateTaskSheet from '@/components/tasks/create-task-sheet';
+import TaskDetailSheet from '@/components/tasks/task-detail-sheet';
 import { toast } from 'sonner';
 
 export default function TasksPage() {
@@ -17,7 +18,8 @@ export default function TasksPage() {
     const queryClient = useQueryClient();
     const [view, setView] = useState<'list' | 'kanban'>('list');
     const [isCreateOpen, setIsCreateOpen] = useState(false);
-    const [selectedTask, setSelectedTask] = useState<any>(null);
+    const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+    const [taskToEdit, setTaskToEdit] = useState<any>(null); // For editing
     const [showFilters, setShowFilters] = useState(false);
 
     const [filters, setFilters] = useState({
@@ -49,8 +51,8 @@ export default function TasksPage() {
 
     // Fetch Tasks with Filters
     const { data: tasksResponse, isLoading } = useQuery({
-        queryKey: ['tasks', filters],
-        queryFn: () => tasksApi.getAll(filters)
+        queryKey: ['tasks', filters, view],
+        queryFn: () => tasksApi.getAll({ ...filters, includeSubtasks: view === 'kanban' })
     });
 
     const tasks = Array.isArray(tasksResponse) ? tasksResponse : (tasksResponse as any)?.data || [];
@@ -71,13 +73,22 @@ export default function TasksPage() {
         updateStatusMutation.mutate({ id, status: newStatus });
     };
 
-    const handleEdit = (task: any) => {
-        setSelectedTask(task);
+    const handleViewDetails = (taskId: string) => {
+        setSelectedTaskId(taskId);
+    };
+
+    const handleKanbanEdit = (task: any) => {
+        setTaskToEdit(task);
+        setIsCreateOpen(true);
+    };
+
+    const handleEditTask = (task: any) => {
+        setTaskToEdit(task);
         setIsCreateOpen(true);
     };
 
     const handleCreateOpen = () => {
-        setSelectedTask(null);
+        setTaskToEdit(null);
         setIsCreateOpen(true);
     };
 
@@ -219,32 +230,42 @@ export default function TasksPage() {
                         />
                     </div>
                 )}
-                {/* Active Filter Chips? Not strictly needed but nice. */}
             </div>
 
             <div className="flex-1 min-h-0 bg-[#0a0a0a] border border-white/5 rounded-2xl overflow-hidden flex flex-col shadow-2xl">
-                {/* Filters could go here */}
-
                 <div className="flex-1 overflow-auto bg-zinc-950/30 p-4">
                     {view === 'list' ? (
-                        <TaskList tasks={tasks} isLoading={isLoading} onEdit={handleEdit} />
+                        <TaskList tasks={tasks} isLoading={isLoading} onViewDetails={handleViewDetails} />
                     ) : (
                         <div className="h-full">
                             <TaskKanban
                                 tasks={tasks}
                                 isLoading={isLoading}
                                 onStatusChange={handleStatusChange}
-                                onEdit={handleEdit}
+                                onEdit={handleKanbanEdit}
+                                onViewDetails={handleViewDetails}
                             />
                         </div>
                     )}
                 </div>
             </div>
 
+            {/* Create Task Sheet */}
             <CreateTaskSheet
                 isOpen={isCreateOpen}
-                onClose={() => setIsCreateOpen(false)}
-                taskToEdit={selectedTask}
+                onClose={() => {
+                    setIsCreateOpen(false);
+                    setTaskToEdit(null);
+                }}
+                taskToEdit={taskToEdit}
+            />
+
+            {/* Task Detail Sheet */}
+            <TaskDetailSheet
+                isOpen={!!selectedTaskId}
+                onClose={() => setSelectedTaskId(null)}
+                taskId={selectedTaskId}
+                onEdit={handleEditTask}
             />
         </div>
     );

@@ -70,8 +70,17 @@ export class TasksService {
         assigneeId?: string;
         startDate?: string;
         dueDate?: string;
+        parentTaskId?: string; // Filter by parent task (for subtasks)
+        includeSubtasks?: boolean; // Whether to include only parent tasks
     }) {
         const where: Prisma.TaskWhereInput = { companyId };
+
+        // By default, only show parent tasks (not subtasks) unless filtering by parentTaskId
+        if (query.parentTaskId) {
+            where.parentTaskId = query.parentTaskId;
+        } else if (!query.includeSubtasks) {
+            where.parentTaskId = null; // Only top-level tasks
+        }
 
         if (query.projectId) where.projectId = query.projectId;
         if (query.status && query.status !== 'ALL') where.status = query.status as TaskStatus;
@@ -126,18 +135,148 @@ export class TasksService {
                         title: true,
                         ownerId: true
                     }
+                },
+                subtasks: {
+                    select: {
+                        id: true,
+                        name: true,
+                        status: true,
+                        priority: true
+                    }
+                },
+                _count: {
+                    select: {
+                        subtasks: true,
+                        timeLogs: true
+                    }
+                },
+                parentTask: {
+                    select: {
+                        id: true,
+                        name: true
+                    }
                 }
             },
             orderBy: { createdAt: 'desc' },
         });
     }
 
+    async findOne(id: string, companyId: string) {
+        const task = await this.prisma.task.findFirst({
+            where: { id, companyId },
+            include: {
+                assignees: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        avatar: true,
+                        designation: { select: { name: true } }
+                    },
+                },
+                project: {
+                    select: {
+                        id: true,
+                        title: true,
+                        ownerId: true
+                    }
+                },
+                subtasks: {
+                    include: {
+                        assignees: {
+                            select: {
+                                id: true,
+                                firstName: true,
+                                lastName: true,
+                                avatar: true
+                            }
+                        },
+                        _count: {
+                            select: { timeLogs: true }
+                        },
+                        timeLogs: {
+                            include: {
+                                employee: {
+                                    select: {
+                                        id: true,
+                                        firstName: true,
+                                        lastName: true,
+                                        avatar: true
+                                    }
+                                }
+                            },
+                            orderBy: { date: 'desc' }
+                        }
+                    },
+                    orderBy: { createdAt: 'desc' }
+                },
+                timeLogs: {
+                    include: {
+                        employee: {
+                            select: {
+                                id: true,
+                                firstName: true,
+                                lastName: true,
+                                avatar: true
+                            }
+                        }
+                    },
+                    orderBy: { date: 'desc' }
+                },
+                parentTask: {
+                    select: {
+                        id: true,
+                        name: true
+                    }
+                }
+            }
+        });
+
+        if (!task) throw new NotFoundException('Task not found');
+
+        // Calculate total hours (including subtasks)
+        let totalMinutes = task.timeLogs.reduce((sum, log) => sum + log.durationMinutes, 0);
+
+        // Add subtask hours
+        for (const subtask of task.subtasks) {
+            const subtaskLogs = await this.prisma.timeLog.aggregate({
+                where: { taskId: subtask.id },
+                _sum: { durationMinutes: true }
+            });
+            totalMinutes += subtaskLogs._sum.durationMinutes || 0;
+        }
+
+        return {
+            ...task,
+            totalMinutes,
+            totalHours: Math.round(totalMinutes / 60 * 100) / 100
+        };
+    }
+
     async update(id: string, companyId: string, data: any) {
-        // Simple update for status/etc.
-        // If updating assignees, need special logic, but for now simple update
+        const { assigneeIds, ...rest } = data;
+
+        const updateData: any = { ...rest };
+
+        if (assigneeIds) {
+            updateData.assignees = {
+                set: assigneeIds.map((aId: string) => ({ id: aId })),
+            };
+        }
+
         return this.prisma.task.update({
             where: { id, companyId },
-            data
+            data: updateData,
+            include: {
+                project: true,
+                assignees: { include: { user: true } }
+            }
+        });
+    }
+
+    async remove(id: string, companyId: string) {
+        return this.prisma.task.delete({
+            where: { id, companyId }
         });
     }
 }

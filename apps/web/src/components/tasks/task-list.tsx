@@ -1,13 +1,14 @@
 import { format } from 'date-fns';
 import { Task } from '@/lib/api/tasks';
+import { ListTodo, Clock } from 'lucide-react';
 
 interface TaskListProps {
     tasks: Task[];
     isLoading: boolean;
-    onEdit?: (task: Task) => void;
+    onViewDetails?: (taskId: string) => void;
 }
 
-export default function TaskList({ tasks, isLoading, onEdit }: TaskListProps) {
+export default function TaskList({ tasks, isLoading, onViewDetails }: TaskListProps) {
     if (isLoading) {
         return <div className="p-8 text-center text-zinc-500">Loading tasks...</div>;
     }
@@ -47,15 +48,21 @@ export default function TaskList({ tasks, isLoading, onEdit }: TaskListProps) {
                         <th className="px-6 py-4 font-medium">Project</th>
                         <th className="px-6 py-4 font-medium">Status</th>
                         <th className="px-6 py-4 font-medium">Priority</th>
-                        <th className="px-6 py-4 font-medium">Start Date</th>
+                        <th className="px-6 py-4 font-medium text-center">Subtasks</th>
                         <th className="px-6 py-4 font-medium">Due Date</th>
-                        <th className="px-6 py-4 font-medium">Owner(s)</th>
+                        <th className="px-6 py-4 font-medium">Assignees</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5 text-sm">
                     {tasks.map((task) => (
-                        <tr key={task.id} className="group hover:bg-white/5 transition-colors cursor-pointer" onClick={() => onEdit?.(task)}>
-                            <td className="px-6 py-4 font-medium text-white">{task.name}</td>
+                        <tr
+                            key={task.id}
+                            className="group hover:bg-white/5 transition-colors cursor-pointer"
+                            onClick={() => onViewDetails?.(task.id)}
+                        >
+                            <td className="px-6 py-4">
+                                <span className="font-medium text-white">{task.name}</span>
+                            </td>
                             <td className="px-6 py-4 text-zinc-300">{task.project?.title || 'Unknown'}</td>
                             <td className="px-6 py-4">
                                 <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusColor(task.status)}`}>
@@ -67,8 +74,15 @@ export default function TaskList({ tasks, isLoading, onEdit }: TaskListProps) {
                                     {task.priority}
                                 </span>
                             </td>
-                            <td className="px-6 py-4 text-zinc-400">
-                                {task.startDate ? format(new Date(task.startDate), 'MMM d') : '-'}
+                            <td className="px-6 py-4 text-center">
+                                {task._count?.subtasks ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-zinc-800 rounded-lg text-xs text-zinc-300">
+                                        <ListTodo className="h-3 w-3" />
+                                        {task._count.subtasks}
+                                    </span>
+                                ) : (
+                                    <span className="text-zinc-600">—</span>
+                                )}
                             </td>
                             <td className="px-6 py-4 text-zinc-400">
                                 {task.dueDate ? format(new Date(task.dueDate), 'MMM d') : '-'}
@@ -102,3 +116,4 @@ export default function TaskList({ tasks, isLoading, onEdit }: TaskListProps) {
         </div>
     );
 }
+

@@ -153,9 +153,10 @@ interface CreateTaskSheetProps {
     isOpen: boolean;
     onClose: () => void;
     taskToEdit?: Task | null;
+    parentTask?: Task | null; // If set, creating a subtask
 }
 
-export default function CreateTaskSheet({ isOpen, onClose, taskToEdit }: CreateTaskSheetProps) {
+export default function CreateTaskSheet({ isOpen, onClose, taskToEdit, parentTask }: CreateTaskSheetProps) {
     const [mounted, setMounted] = useState(false);
     const queryClient = useQueryClient();
 
@@ -217,7 +218,7 @@ export default function CreateTaskSheet({ isOpen, onClose, taskToEdit }: CreateT
         } else if (isOpen && !taskToEdit) {
             reset({
                 name: '',
-                projectId: '',
+                projectId: parentTask?.projectId || '', // Pre-fill from parent task if creating subtask
                 status: 'TO_DO',
                 priority: 'MEDIUM',
                 billingType: 'NON_BILLABLE',
@@ -242,6 +243,7 @@ export default function CreateTaskSheet({ isOpen, onClose, taskToEdit }: CreateT
         onSuccess: () => {
             toast.success(taskToEdit ? 'Task updated successfully' : 'Task created successfully');
             queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            queryClient.invalidateQueries({ queryKey: ['task'] });
             reset();
             onClose();
         },
@@ -256,6 +258,7 @@ export default function CreateTaskSheet({ isOpen, onClose, taskToEdit }: CreateT
             ...data,
             startDate: data.startDate ? new Date(data.startDate).toISOString() : undefined,
             dueDate: data.dueDate ? new Date(data.dueDate).toISOString() : undefined,
+            parentTaskId: parentTask?.id, // Include parent task ID for subtasks
         };
         mutation.mutate(payload);
     };

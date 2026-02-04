@@ -14,6 +14,10 @@ export class CreateTaskDto {
     @IsNotEmpty()
     projectId: string;
 
+    @IsUUID()
+    @IsOptional()
+    parentTaskId?: string; // If provided, this creates a subtask
+
     @IsArray()
     @IsUUID(4, { each: true })
     assigneeIds: string[];

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { timeLogsApi, TimeLogStatus } from '@/lib/api/timelogs';
@@ -30,6 +31,18 @@ export default function TimeLogsPage() {
         from: startOfMonth(new Date()),
         to: endOfMonth(new Date())
     });
+
+    const searchParams = useSearchParams();
+    const taskIdParam = searchParams.get('taskId');
+
+    // Auto-open create sheet if taskId is present in URL
+    useEffect(() => {
+        if (taskIdParam) {
+            setLogToEdit({ taskId: taskIdParam }); // Partial object to pre-fill
+            setIsCreateOpen(true);
+        }
+    }, [taskIdParam]);
+
 
     // Filters State - Expanded for Sidebar
     const [filters, setFilters] = useState({
