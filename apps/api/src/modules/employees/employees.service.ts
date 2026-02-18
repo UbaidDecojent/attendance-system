@@ -12,7 +12,9 @@ import { EmployeeQueryDto } from './dto/employee-query.dto';
 import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
-import { addDays } from 'date-fns';
+import { LeaveStatus, AttendanceStatus, NotificationType } from '@prisma/client';
+
+import { addDays, differenceInBusinessDays, subDays, isWeekend } from 'date-fns';
 import { EmailService } from '../auth/services/email.service';
 
 @Injectable()
@@ -175,6 +177,7 @@ export class EmployeesService {
     }
 
     async findAll(companyId: string, query: EmployeeQueryDto) {
+        console.log('EmployeesService.findAll called with:', { companyId, query });
         const {
             search,
             departmentId,
@@ -207,6 +210,8 @@ export class EmployeesService {
         if (status === 'active') where.isActive = true;
         if (status === 'inactive') where.isActive = false;
 
+        console.log('EmployeesService.findAll where clause:', where);
+
         const [employees, total] = await Promise.all([
             this.prisma.employee.findMany({
                 where,
@@ -223,8 +228,130 @@ export class EmployeesService {
             this.prisma.employee.count({ where }),
         ]);
 
+        let items: any[] = employees;
+
+        if (query.includeLeaveBalances) {
+            const leaveTypes = await this.prisma.leaveType.findMany({
+                where: { companyId, isActive: true },
+            });
+
+            // Fetch approved leaves since 2026-01-01
+            const employeeIds = items.map(e => e.id);
+            const approvedLeaves = await this.prisma.leave.findMany({
+                where: {
+                    companyId,
+                    employeeId: { in: employeeIds },
+                    status: LeaveStatus.APPROVED,
+                    startDate: { gte: new Date('2026-01-01') },
+                },
+                select: {
+                    employeeId: true,
+                    leaveTypeId: true,
+                    totalDays: true,
+                },
+            });
+
+            // Fetch Holidays since 2026-01-01
+            const holidays = await this.prisma.holiday.findMany({
+                where: {
+                    companyId,
+                    date: { gte: new Date('2026-01-01') },
+                },
+                select: { date: true },
+            });
+
+            // Fetch Attendance counts since 2026-01-01 (to calculate absent days)
+            // We count records up to yesterday to avoid flagging "Today" as absent if they haven't checked in *yet*
+            const yesterday = subDays(new Date(), 1);
+            const attendanceCounts = await this.prisma.attendanceRecord.groupBy({
+                by: ['employeeId'],
+                where: {
+                    companyId,
+                    employeeId: { in: employeeIds },
+                    date: {
+                        gte: new Date('2026-01-01'),
+                        lte: yesterday,
+                    },
+                },
+                _count: { id: true },
+            });
+
+            // Maps for fast lookup
+            const attendanceMap = new Map<string, number>();
+            attendanceCounts.forEach(a => attendanceMap.set(a.employeeId, a._count.id));
+
+            // Group by employee and leave type
+            const usedLeavesMap = new Map<string, number>(); // key: `${employeeId}-${leaveTypeId}`
+            for (const leave of approvedLeaves) {
+                const key = `${leave.employeeId}-${leave.leaveTypeId}`;
+                usedLeavesMap.set(key, (usedLeavesMap.get(key) || 0) + Number(leave.totalDays));
+            }
+
+            items = employees.map((emp) => {
+                const balances = (emp.leaveBalances as Record<string, number>) || {};
+
+                // --- Absent Days Calculation ---
+                const startCalc = emp.dateOfJoining > new Date('2026-01-01')
+                    ? emp.dateOfJoining
+                    : new Date('2026-01-01');
+
+                // Ensure we don't calculate if joined in the future or after yesterday using business days logic
+                // If startCalc > yesterday, max(0, negative) handles it partially but logical check is better
+                let absentDays = 0;
+
+                if (startCalc <= yesterday) {
+                    // +1 to make it inclusive of start and end for "working days available" concept
+                    const totalBusinessDays = differenceInBusinessDays(yesterday, startCalc) + 1;
+
+                    const holidayCount = holidays.filter(h =>
+                        h.date >= startCalc && h.date <= yesterday && !isWeekend(h.date)
+                    ).length;
+
+                    const expectedAttendance = Math.max(0, totalBusinessDays - holidayCount);
+                    const actualAttendance = attendanceMap.get(emp.id) || 0;
+
+                    // Absent = Expected - Actual
+                    // Actual includes PRESENT, LATE, HALF_DAY, and ON_LEAVE (created by approved leave)
+                    absentDays = Math.max(0, expectedAttendance - actualAttendance);
+                }
+
+                const leaves = leaveTypes.map((lt) => {
+                    const used = usedLeavesMap.get(`${emp.id}-${lt.id}`) || 0;
+                    const remaining = balances[lt.id] || 0;
+
+                    return {
+                        leaveTypeId: lt.id,
+                        leaveTypeName: lt.name,
+                        code: lt.code,
+                        color: lt.color,
+                        total: used + remaining,
+                        used: used,
+                        remaining: remaining,
+                    };
+                });
+
+                // Calculate total used (Approved Leaves + Absent Days)
+                // Note: We don't deduct Absent Days from specific leave type balances as we don't know which one.
+                // It just appears in "Leaves Taken".
+                const leavesUsedFromRequests = leaves.reduce((sum, l) => sum + l.used, 0);
+                const totalUsed = leavesUsedFromRequests + absentDays;
+
+                const totalRemaining = leaves.reduce((sum, l) => sum + l.remaining, 0);
+
+                return {
+                    ...emp,
+                    leaveSummary: {
+                        details: leaves,
+                        totalUsed, // Now includes absent days
+                        totalRemaining,
+                        absentDays // Optional: Helpful if frontend wants to show split
+                    }
+                };
+            });
+        }
+
         return {
-            items: employees,
+            items,
             meta: {
                 page,
                 limit,
@@ -401,7 +528,7 @@ export class EmployeesService {
         companyId: string,
         leaveTypeId: string,
         adjustment: number,
-        reason: string,
+        reason?: string,
     ) {
         const employee = await this.prisma.employee.findFirst({
             where: { id, companyId },
@@ -413,10 +540,10 @@ export class EmployeesService {
 
         const balances = employee.leaveBalances as Record<string, number>;
         const currentBalance = balances[leaveTypeId] || 0;
-        const newBalance = currentBalance + adjustment;
+        const newBalance = adjustment;
 
         if (newBalance < 0) {
-            throw new BadRequestException('Insufficient leave balance');
+            throw new BadRequestException('Leave balance cannot be negative');
         }
 
         balances[leaveTypeId] = newBalance;
@@ -429,7 +556,6 @@ export class EmployeesService {
         return {
             leaveTypeId,
             previousBalance: currentBalance,
-            adjustment,
             newBalance,
             reason,
         };

@@ -19,6 +19,7 @@ import {
     TimerOff
 } from 'lucide-react';
 import { attendanceApi } from '@/lib/api/attendance';
+import { employeesApi } from '@/lib/api/employees';
 import { formatDate, formatTime, cn } from '@/lib/utils';
 import { format, startOfMonth, endOfMonth, differenceInCalendarDays, getDay } from 'date-fns';
 import { DataTable } from '@/components/data-table';
@@ -37,6 +38,7 @@ interface DateStats {
     late: number;
     halfday: number;
     onTime: number;
+    onLeave: number;
     records: any[];
 }
 
@@ -60,6 +62,12 @@ export default function AttendancePage() {
         queryFn: () => isAdmin
             ? attendanceApi.getHistory({ startDate, endDate, limit: 500 })
             : attendanceApi.getMyHistory({ startDate, endDate, limit: 100 }),
+    });
+
+    const { data: employeeStats } = useQuery({
+        queryKey: ['employeeStats', isAdmin],
+        queryFn: () => employeesApi.getStats(),
+        enabled: isAdmin,
     });
 
     const { data: regularizationsData, refetch: refetchRequests } = useQuery({
@@ -89,6 +97,7 @@ export default function AttendancePage() {
         if (!isAdmin || !history?.items || history.items.length === 0) return [];
 
         const dateMap = new Map<string, DateStats>();
+        const totalActive = employeeStats?.active || 0;
 
         // Group records by date
         history.items.forEach((record: any) => {
@@ -106,19 +115,21 @@ export default function AttendancePage() {
                 dateMap.set(dateStr, {
                     date: dateStr,
                     dateObj,
-                    totalEmployees: 0,
+                    totalEmployees: totalActive,
                     present: 0,
                     absent: 0,
                     late: 0,
                     halfday: 0,
                     onTime: 0,
+                    onLeave: 0,
                     records: []
                 });
             }
 
             const stats = dateMap.get(dateStr)!;
             stats.records.push(record);
-            stats.totalEmployees++;
+            // Ensure totalEmployees covers historical records count if > current active
+            stats.totalEmployees = Math.max(stats.totalEmployees, stats.records.length);
 
             if (record.status === 'PRESENT') {
                 stats.present++;
@@ -143,17 +154,28 @@ export default function AttendancePage() {
                     }
                 }
             } else if (record.status === 'ABSENT') {
-                stats.absent++;
+                // Explicit absent is counted, but usually implicit is the main source
+                // We'll calculate total absent at the end
             } else if (record.status === 'HALF_DAY') {
                 stats.halfday++;
                 stats.present++;
+            } else if (record.status === 'ON_LEAVE') {
+                stats.onLeave++;
             }
+        });
+
+        // Final calculation for absent: Total - (Present + OnLeave)
+        dateMap.forEach(stats => {
+            // Absent is everyone who isn't Present (includes halfday) or On Leave
+            // Note: Explicit 'ABSENT' records are just placeholders, they don't add to 'present' or 'onLeave'
+            // So they remain in the pool of 'Total - Accounted', effectively becoming 'Absent'.
+            stats.absent = Math.max(0, stats.totalEmployees - stats.present);
         });
 
         // Convert to array and sort by date descending
         return Array.from(dateMap.values())
             .sort((a, b) => b.dateObj.getTime() - a.dateObj.getTime());
-    }, [isAdmin, history]);
+    }, [isAdmin, history, employeeStats]);
 
     // Admin view: records for selected date
     const selectedDateRecords = useMemo(() => {
@@ -601,7 +623,7 @@ export default function AttendancePage() {
                                                             <p className="text-xl font-bold text-white">{stats.late}</p>
                                                         </div>
 
-                                                        {/* Halfday - Split circle */}
+                                                        {/* Halfday */}
                                                         <div className="text-center flex-1">
                                                             <div className="flex items-center justify-center gap-1.5 mb-1.5">
                                                                 <span
