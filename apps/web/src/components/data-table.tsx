@@ -18,6 +18,14 @@ interface DataTableProps<TData, TValue> {
     data: TData[]
     showPagination?: boolean
     showSearch?: boolean
+    pageCount?: number
+    onPageChange?: (page: number) => void
+    pagination?: {
+        pageIndex: number
+        pageSize: number
+        total?: number
+    }
+    isLoading?: boolean
 }
 
 export function DataTable<TData, TValue>({
@@ -25,13 +33,21 @@ export function DataTable<TData, TValue>({
     data,
     showPagination = true,
     showSearch = true,
+    pageCount,
+    onPageChange,
+    pagination: externalPagination,
+    isLoading
 }: DataTableProps<TData, TValue>) {
     const [sorting, setSorting] = React.useState<SortingState>([])
     const [globalFilter, setGlobalFilter] = React.useState("")
 
+    const manualPagination = !!onPageChange && !!externalPagination;
+
     const table = useReactTable({
         data,
         columns,
+        pageCount: manualPagination ? pageCount : undefined,
+        manualPagination,
         getCoreRowModel: getCoreRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
         getSortedRowModel: getSortedRowModel(),
@@ -49,6 +65,12 @@ export function DataTable<TData, TValue>({
         state: {
             sorting,
             globalFilter,
+            ...(manualPagination ? {
+                pagination: {
+                    pageIndex: (externalPagination?.pageIndex || 1) - 1, // Convert 1-based to 0-based
+                    pageSize: externalPagination?.pageSize || 10
+                }
+            } : {})
         },
     })
 
@@ -91,7 +113,13 @@ export function DataTable<TData, TValue>({
                             ))}
                         </thead>
                         <tbody className="divide-y divide-white/5">
-                            {table.getRowModel().rows?.length ? (
+                            {isLoading ? (
+                                <tr>
+                                    <td colSpan={columns.length} className="h-24 text-center text-zinc-500">
+                                        Loading...
+                                    </td>
+                                </tr>
+                            ) : table.getRowModel().rows?.length ? (
                                 table.getRowModel().rows.map((row) => (
                                     <tr
                                         key={row.id}
@@ -122,14 +150,26 @@ export function DataTable<TData, TValue>({
                 <div className="flex items-center justify-end space-x-2 py-4">
                     <button
                         className="p-2 hover:bg-zinc-800 rounded-full transition-colors text-zinc-400 hover:text-white disabled:opacity-50 disabled:hover:bg-transparent"
-                        onClick={() => table.previousPage()}
+                        onClick={() => {
+                            if (manualPagination && onPageChange && externalPagination) {
+                                onPageChange(externalPagination.pageIndex - 1);
+                            } else {
+                                table.previousPage();
+                            }
+                        }}
                         disabled={!table.getCanPreviousPage()}
                     >
                         <ChevronLeft className="h-5 w-5" />
                     </button>
                     <button
                         className="p-2 hover:bg-zinc-800 rounded-full transition-colors text-zinc-400 hover:text-white disabled:opacity-50 disabled:hover:bg-transparent"
-                        onClick={() => table.nextPage()}
+                        onClick={() => {
+                            if (manualPagination && onPageChange && externalPagination) {
+                                onPageChange(externalPagination.pageIndex + 1);
+                            } else {
+                                table.nextPage();
+                            }
+                        }}
                         disabled={!table.getCanNextPage()}
                     >
                         <ChevronRight className="h-5 w-5" />
