@@ -60,7 +60,7 @@ export class TimeLogsController {
     }
 
     @Patch(':id/status')
-    @Roles('SUPER_ADMIN', 'COMPANY_ADMIN', 'HR_MANAGER')
+    @Roles('SUPER_ADMIN', 'COMPANY_ADMIN', 'HR_MANAGER', 'TEAM_MANAGER')
     @ApiOperation({ summary: 'Update time log status (Admin only)' })
     updateStatus(
         @Param('id') id: string,

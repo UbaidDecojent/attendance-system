@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Body, UseGuards, Param } from '@nestjs/common';
+import { Controller, Get, Put, Body, UseGuards, Param, Patch } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -46,5 +46,16 @@ export class UsersController {
     @ApiOperation({ summary: 'Get user by ID' })
     async getUserById(@Param('id') id: string) {
         return this.usersService.findById(id);
+    }
+
+    @Patch(':id/role')
+    @Roles(UserRole.COMPANY_ADMIN)
+    @ApiOperation({ summary: 'Update user role (Admin only)' })
+    async updateRole(
+        @Param('id') id: string,
+        @Body('role') role: string,
+        @CurrentUser() user: any,
+    ) {
+        return this.usersService.updateRole(id, role, user.id);
     }
 }

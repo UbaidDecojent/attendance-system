@@ -169,6 +169,7 @@ model Company {
   projects          Project[]
   tasks             Task[]
   timeLogs          TimeLog[]
+  dailyUpdates      DailyUpdate[]
   
   @@index([slug])
   @@index([email])
@@ -390,6 +391,7 @@ model Employee {
   ownedProjects     Project[] @relation("ProjectOwner")
   assignedTasks     Task[]    @relation("TaskAssignees")
   timeLogs          TimeLog[]
+  dailyUpdates      DailyUpdate[]
   
   @@unique([companyId, employeeCode])
   @@unique([companyId, email])
@@ -777,6 +779,7 @@ model Project {
   
   tasks       Task[]
   timeLogs    TimeLog[]
+  dailyUpdates DailyUpdate[]
 
   @@index([companyId])
   @@index([ownerId])
@@ -799,6 +802,7 @@ model Task {
   startDate   DateTime? @db.Date
   dueDate     DateTime? @db.Date
   duration    String?
+  estimatedHours Float? @default(0)
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -810,6 +814,7 @@ model Task {
   subtasks    Task[]    @relation("TaskSubtasks")
   assignees   Employee[] @relation("TaskAssignees")
   timeLogs    TimeLog[]
+  dailyUpdates DailyUpdate[]
   
   @@index([companyId])
   @@index([projectId])
@@ -853,4 +858,47 @@ model TimeLog {
   @@index([employeeId])
   @@index([date])
   @@index([status])
+}
+
+// ==================== DAILY UPDATES ====================
+
+enum ProjectType {
+  CLIENT
+  IN_HOUSE
+}
+
+enum DailyUpdateStatus {
+  IN_PROGRESS
+  COMPLETED
+}
+
+model DailyUpdate {
+  id              String    @id @default(uuid())
+  companyId       String
+  employeeId      String
+  projectId       String
+  taskId          String
+  
+  date            DateTime  @db.Date  // The date this update is for
+  hoursWorked     Float               // Hours worked on this task today
+  deadline        DateTime? @db.Date  // Optional deadline
+  billingType     BillingType         // BILLABLE or NON_BILLABLE
+  projectType     ProjectType         // CLIENT or IN_HOUSE
+  status          DailyUpdateStatus @default(IN_PROGRESS)
+  notes           String?   @db.Text
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relations
+  company         Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee        Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  project         Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  task            Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([date])
+  @@index([projectId])
+  @@index([taskId])
 }

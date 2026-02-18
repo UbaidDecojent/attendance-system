@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum, IsDateString, IsArray, IsUUID, IsNotEmpty } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsDateString, IsArray, IsUUID, IsNotEmpty, IsNumber } from 'class-validator';
 import { TaskStatus, TaskPriority, BillingType } from '@prisma/client';
 
 export class CreateTaskDto {
@@ -45,4 +45,8 @@ export class CreateTaskDto {
     @IsString()
     @IsOptional()
     duration?: string;
+
+    @IsNumber()
+    @IsOptional()
+    estimatedHours?: number;
 }

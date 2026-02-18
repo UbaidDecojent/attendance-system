@@ -1,6 +1,6 @@
-import { IsOptional, IsString, IsUUID, IsNumber, Min, Max } from 'class-validator';
+import { IsOptional, IsString, IsUUID, IsNumber, Min, Max, IsBoolean } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 
 export class EmployeeQueryDto {
     @ApiPropertyOptional()
@@ -47,4 +47,9 @@ export class EmployeeQueryDto {
     @Min(1)
     @Max(1000)
     limit?: number = 20;
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsBoolean()
+    @Transform(({ value }) => value === 'true' || value === true)
+    includeLeaveBalances?: boolean;
 }

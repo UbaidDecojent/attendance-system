@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -16,18 +16,36 @@ import {
     Edit,
     UserX,
     UserCheck,
+    Shield,
 } from 'lucide-react';
 import { employeesApi } from '@/lib/api/employees';
+import { useAuthStore } from '@/lib/stores/auth-store';
 import { cn, getInitials } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import ManageLeaveBalanceModal from '@/components/employees/ManageLeaveBalanceModal';
 
 export default function EmployeeDetailPage() {
     const params = useParams();
     const router = useRouter();
+    const queryClient = useQueryClient();
     const employeeId = params.id as string;
     const [showLeaveModal, setShowLeaveModal] = useState(false);
+    const currentUser = useAuthStore((state) => state.user);
+    const isAdmin = currentUser?.role === 'COMPANY_ADMIN';
+
+    const roleUpdateMutation = useMutation({
+        mutationFn: ({ userId, role }: { userId: string; role: string }) =>
+            employeesApi.updateUserRole(userId, role),
+        onSuccess: () => {
+            toast.success('Role updated successfully');
+            queryClient.invalidateQueries({ queryKey: ['employee', employeeId] });
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || 'Failed to update role');
+        },
+    });
 
     const { data: employee, isLoading, error } = useQuery({
         queryKey: ['employee', employeeId],
@@ -91,7 +109,7 @@ export default function EmployeeDetailPage() {
                         className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border hover:bg-muted transition-colors bg-background"
                     >
                         <Calendar className="h-4 w-4" />
-                        Manage Leave
+                        Assign Leaves
                     </button>
                     <Link
                         href={`/dashboard/employees/${employeeId}/edit`}
@@ -276,11 +294,46 @@ export default function EmployeeDetailPage() {
                 {/* Account Status */}
                 {employee.user && (
                     <div className="bg-card rounded-xl border shadow-sm p-6">
-                        <h2 className="text-lg font-semibold mb-4">Account Status</h2>
+                        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                            <Shield className="h-5 w-5 text-primary" />
+                            Account & Role
+                        </h2>
                         <dl className="space-y-4">
                             <div>
-                                <dt className="text-sm text-muted-foreground">User Role</dt>
-                                <dd className="font-medium">{employee.user.role?.replace('_', ' ')}</dd>
+                                <dt className="text-sm text-muted-foreground mb-1">User Role</dt>
+                                {isAdmin && employee.user.role !== 'SUPER_ADMIN' && employee.user.id !== currentUser?.id ? (
+                                    <dd>
+                                        <select
+                                            value={employee.user.role}
+                                            onChange={(e) => {
+                                                roleUpdateMutation.mutate({
+                                                    userId: employee.user.id,
+                                                    role: e.target.value,
+                                                });
+                                            }}
+                                            disabled={roleUpdateMutation.isPending}
+                                            className="w-full px-3 py-2 rounded-lg border bg-background text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                                        >
+                                            <option value="EMPLOYEE">Employee</option>
+                                            <option value="TEAM_MANAGER">Manager</option>
+                                            <option value="HR_MANAGER">HR Manager</option>
+                                            <option value="COMPANY_ADMIN">Admin</option>
+                                        </select>
+                                    </dd>
+                                ) : (
+                                    <dd className="font-medium">
+                                        <span className={cn(
+                                            'px-2.5 py-1 rounded-full text-xs font-semibold',
+                                            employee.user.role === 'COMPANY_ADMIN' && 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+                                            employee.user.role === 'HR_MANAGER' && 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+                                            employee.user.role === 'TEAM_MANAGER' && 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+                                            employee.user.role === 'EMPLOYEE' && 'bg-zinc-100 text-zinc-700 dark:bg-zinc-900/30 dark:text-zinc-400',
+                                            employee.user.role === 'SUPER_ADMIN' && 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+                                        )}>
+                                            {employee.user.role?.replace(/_/g, ' ')}
+                                        </span>
+                                    </dd>
+                                )}
                             </div>
                             <div>
                                 <dt className="text-sm text-muted-foreground">Account Status</dt>

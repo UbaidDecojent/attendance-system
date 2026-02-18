@@ -198,7 +198,7 @@ export default function TimeLogsPage() {
         toast.success("PDF exported successfully");
     };
 
-    const isAdmin = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'HR_MANAGER'].includes(user?.role || '');
+    const isAdmin = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'HR_MANAGER', 'TEAM_MANAGER'].includes(user?.role || '');
     const currentEmployeeId = (user as any)?.employee?.id || (user as any)?.employeeId;
 
     // Calc Totals

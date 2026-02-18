@@ -49,6 +49,19 @@ export class TasksController {
         });
     }
 
+    @Get('workload')
+    @Roles('SUPER_ADMIN', 'COMPANY_ADMIN', 'HR_MANAGER', 'TEAM_MANAGER')
+    @ApiOperation({ summary: 'Get workload matrix for all employees' })
+    @ApiQuery({ name: 'startDate', required: true })
+    @ApiQuery({ name: 'endDate', required: true })
+    async getWorkload(
+        @Query('startDate') startDate: string,
+        @Query('endDate') endDate: string,
+        @CurrentUser() user: any
+    ) {
+        return this.tasksService.getWorkload(user.companyId, startDate, endDate);
+    }
+
     @Get(':id')
     @ApiOperation({ summary: 'Get task details with subtasks and time logs' })
     findOne(@Param('id') id: string, @CurrentUser() user: any) {

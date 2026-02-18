@@ -15,7 +15,9 @@ export interface Task {
     billingType: BillingType;
     startDate?: string;
     dueDate?: string;
+
     duration?: string;
+    estimatedHours?: number;
     assignees: {
         id: string;
         firstName: string;
@@ -49,7 +51,32 @@ export interface Task {
     createdAt: string;
 }
 
+export interface WorkloadResponse {
+    id: string; // Employee ID
+    name: string;
+    avatar: string | null;
+    designation: string;
+    capacity: number;
+    workload: Record<string, number>;
+    tasks: {
+        id: string;
+        name: string;
+        project: string;
+        startDate: string;
+        dueDate: string;
+        estimatedHours: number;
+        dailyHours: number;
+        dailyLoggedHours?: Record<string, number>;
+        status: string;
+        billingType?: string;
+    }[];
+}
+
 export const tasksApi = {
+    getWorkload: async (startDate: string, endDate: string) => {
+        const response = await api.get<any>('/tasks/workload', { params: { startDate, endDate } });
+        return response.data.data || response.data;
+    },
     getAll: async (params?: {
         projectId?: string;
         status?: string;

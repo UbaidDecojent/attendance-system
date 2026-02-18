@@ -17,7 +17,7 @@ import {
     Menu,
     Briefcase,
     Layers,
-    Timer
+    Timer,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/lib/stores/auth-store';
@@ -42,13 +42,17 @@ const projectNavigation = [
     { name: 'Projects', href: '/dashboard/projects', icon: Briefcase },
     { name: 'Tasks', href: '/dashboard/tasks', icon: Layers },
     { name: 'Time Logs', href: '/dashboard/time-logs', icon: Timer },
+    { name: 'Workload', href: '/dashboard/workload', icon: BarChart3, adminOnly: true },
 ];
 
 export default function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
     const pathname = usePathname();
     const [mobileOpen, setMobileOpen] = useState(false);
     const user = useAuthStore((state) => state.user);
-    const isAdmin = ['COMPANY_ADMIN', 'HR_MANAGER'].includes(user?.role || '');
+    const isAdmin = ['COMPANY_ADMIN'].includes(user?.role || '');
+    const isManager = user?.role === 'TEAM_MANAGER';
+    const isHr = user?.role === 'HR_MANAGER';
+    const hasProjectAccess = isAdmin || isManager;
     const logout = useAuthStore((state) => state.logout);
 
     const isActive = (href: string) => {
@@ -66,7 +70,7 @@ export default function Sidebar({ collapsed = false }: { collapsed?: boolean }) 
                         Main Menu
                     </span>
                 </div>
-                {navigation.filter(item => isAdmin || item.name !== 'Employees').map((item) => (
+                {navigation.filter(item => isAdmin || isHr || item.name !== 'Employees').map((item) => (
                     <Link
                         key={item.name}
                         href={item.href}
@@ -98,7 +102,7 @@ export default function Sidebar({ collapsed = false }: { collapsed?: boolean }) 
                         Project Management
                     </span>
                 </div>
-                {projectNavigation.map((item) => (
+                {projectNavigation.filter(item => !item.adminOnly || isAdmin || isManager).map((item) => (
                     <Link
                         key={item.name}
                         href={item.href}

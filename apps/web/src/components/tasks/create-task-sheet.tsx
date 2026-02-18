@@ -144,6 +144,7 @@ const taskSchema = z.object({
     startDate: z.string().optional(),
     dueDate: z.string().optional(),
     duration: z.string().optional(),
+    estimatedHours: z.coerce.number().optional(),
     description: z.string().optional(),
 });
 
@@ -212,6 +213,7 @@ export default function CreateTaskSheet({ isOpen, onClose, taskToEdit, parentTas
                 startDate: taskToEdit.startDate ? taskToEdit.startDate.split('T')[0] : '',
                 dueDate: taskToEdit.dueDate ? taskToEdit.dueDate.split('T')[0] : '',
                 duration: taskToEdit.duration || '',
+                estimatedHours: taskToEdit.estimatedHours || 0,
                 description: taskToEdit.description || '',
                 assigneeIds: taskToEdit.assignees?.map(a => a.id) || [],
             } as any);
@@ -226,6 +228,7 @@ export default function CreateTaskSheet({ isOpen, onClose, taskToEdit, parentTas
                 startDate: '',
                 dueDate: '',
                 duration: '',
+                estimatedHours: 0,
                 description: ''
             });
         }
@@ -366,7 +369,8 @@ export default function CreateTaskSheet({ isOpen, onClose, taskToEdit, parentTas
                             </div>
 
                             {/* Row 2: Dates */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* Row 2: Dates & Estimates */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label className="text-sm font-semibold text-zinc-300 mb-2 block">Start Date</label>
                                     <input type="date" {...register('startDate')} className="w-full px-4 py-3 rounded-xl border border-white/10 bg-zinc-900/50 text-white focus:outline-none focus:border-lime" />
@@ -376,8 +380,20 @@ export default function CreateTaskSheet({ isOpen, onClose, taskToEdit, parentTas
                                     <input type="date" {...register('dueDate')} className="w-full px-4 py-3 rounded-xl border border-white/10 bg-zinc-900/50 text-white focus:outline-none focus:border-lime" />
                                 </div>
                                 <div>
-                                    <label className="text-sm font-semibold text-zinc-300 mb-2 block">Duration</label>
+                                    <label className="text-sm font-semibold text-zinc-300 mb-2 block">Duration (Text)</label>
                                     <input type="text" {...register('duration')} placeholder="e.g. 2d 5h" className="w-full px-4 py-3 rounded-xl border border-white/10 bg-zinc-900/50 text-white focus:outline-none focus:border-lime" />
+                                </div>
+                                <div>
+                                    <label className="text-sm font-semibold text-zinc-300 mb-2 block">Est. Hours <span className="text-lime">*</span></label>
+                                    <input
+                                        type="number"
+                                        step="0.5"
+                                        min="0"
+                                        placeholder="e.g. 8"
+                                        {...register('estimatedHours')}
+                                        className="w-full px-4 py-3 rounded-xl border border-white/10 bg-zinc-900/50 text-white focus:outline-none focus:border-lime"
+                                    />
+                                    <p className="text-xs text-zinc-500 mt-1">Used for workload calculation</p>
                                 </div>
                             </div>
 

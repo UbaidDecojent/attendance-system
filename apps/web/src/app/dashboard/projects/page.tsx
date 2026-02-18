@@ -13,7 +13,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 
 export default function ProjectsPage() {
     const user = useAuthStore((state) => state.user);
-    const isAdmin = ['COMPANY_ADMIN', 'HR_MANAGER'].includes(user?.role || '');
+    const isAdmin = ['COMPANY_ADMIN', 'HR_MANAGER', 'TEAM_MANAGER'].includes(user?.role || '');
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [selectedProject, setSelectedProject] = useState<any>(null);
     const queryClient = useQueryClient();

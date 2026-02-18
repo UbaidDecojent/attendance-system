@@ -7,9 +7,17 @@ export const employeesApi = {
         status?: string;
         page?: number;
         limit?: number;
+        includeLeaveBalances?: boolean;
     }) {
-        const response = await api.get('/employees', { params });
-        return response.data;
+        console.log('employeesApi.getAll called with params:', params);
+        try {
+            const response = await api.get('/employees', { params });
+            console.log('employeesApi.getAll response:', response.data);
+            return response.data;
+        } catch (error) {
+            console.error('employeesApi.getAll error:', error);
+            throw error;
+        }
     },
 
     async getById(id: string) {
@@ -42,7 +50,7 @@ export const employeesApi = {
         return response.data.data;
     },
 
-    async updateLeaveBalance(id: string, data: { leaveTypeId: string; adjustment: number; reason: string }) {
+    async updateLeaveBalance(id: string, data: { leaveTypeId: string; adjustment: number; reason?: string }) {
         const response = await api.put(`/employees/${id}/leave-balances`, data);
         return response.data.data;
     },
@@ -50,6 +58,11 @@ export const employeesApi = {
     async getStats() {
         const response = await api.get('/employees/stats');
         return response.data.data;
+    },
+
+    async updateUserRole(userId: string, role: string) {
+        const response = await api.patch(`/users/${userId}/role`, { role });
+        return response.data.data || response.data;
     },
 };
 

@@ -32,7 +32,7 @@ export default function TasksPage() {
         dueDate: ''
     });
 
-    const canCreate = user?.role === 'SUPER_ADMIN' || user?.role === 'COMPANY_ADMIN' || user?.role === 'HR_MANAGER';
+    const canCreate = user?.role === 'SUPER_ADMIN' || user?.role === 'COMPANY_ADMIN' || user?.role === 'HR_MANAGER' || user?.role === 'TEAM_MANAGER';
 
     // Fetch Options for Filters
     const { data: projectsResponse } = useQuery({

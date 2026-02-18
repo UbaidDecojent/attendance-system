@@ -15,7 +15,7 @@ export class ProjectsController {
     constructor(private readonly projectsService: ProjectsService) { }
 
     @Post()
-    @Roles('COMPANY_ADMIN', 'HR_MANAGER')
+    @Roles('COMPANY_ADMIN', 'HR_MANAGER', 'TEAM_MANAGER')
     @ApiOperation({ summary: 'Create a new project' })
     create(@Body() createProjectDto: CreateProjectDto, @CurrentUser() user: any) {
         return this.projectsService.create(user.companyId, createProjectDto);
@@ -28,7 +28,7 @@ export class ProjectsController {
     }
 
     @Patch(':id')
-    @Roles('COMPANY_ADMIN', 'HR_MANAGER')
+    @Roles('COMPANY_ADMIN', 'HR_MANAGER', 'TEAM_MANAGER')
     @ApiOperation({ summary: 'Update a project' })
     update(
         @Param('id') id: string,
@@ -39,7 +39,7 @@ export class ProjectsController {
     }
 
     @Delete(':id')
-    @Roles('COMPANY_ADMIN', 'HR_MANAGER')
+    @Roles('COMPANY_ADMIN', 'HR_MANAGER', 'TEAM_MANAGER')
     @ApiOperation({ summary: 'Delete a project' })
     remove(@Param('id') id: string, @CurrentUser() user: any) {
         return this.projectsService.remove(id, user.companyId);

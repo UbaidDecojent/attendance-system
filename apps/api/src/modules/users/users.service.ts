@@ -158,4 +158,33 @@ export class UsersService {
             },
         };
     }
+    async updateRole(userId: string, role: string, currentUserId: string) {
+        if (userId === currentUserId) {
+            throw new ForbiddenException('You cannot change your own role');
+        }
+
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+        });
+
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+
+        if (user.role === 'SUPER_ADMIN') {
+            throw new ForbiddenException('Cannot change role of a Super Admin');
+        }
+
+        return this.prisma.user.update({
+            where: { id: userId },
+            data: { role: role as any },
+            select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+                role: true,
+            },
+        });
+    }
 }

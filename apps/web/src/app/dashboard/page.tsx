@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
@@ -13,11 +13,13 @@ import {
     AlertCircle,
     PlayCircle,
     PauseCircle,
-    AlertTriangle
+    AlertTriangle,
+    Plus,
 } from 'lucide-react';
 import { BarChart, Bar, ResponsiveContainer, Tooltip, XAxis, CartesianGrid } from 'recharts';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { attendanceApi } from '@/lib/api/attendance';
+
 import { formatTime, cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
@@ -27,6 +29,8 @@ export default function DashboardPage() {
     const router = useRouter();
     const user = useAuthStore((state) => state.user);
     const isAdmin = ['COMPANY_ADMIN', 'HR_MANAGER'].includes(user?.role || '');
+    const isEmployeeRole = ['EMPLOYEE', 'TEAM_MANAGER', 'HR_MANAGER'].includes(user?.role || '');
+    const isEmployee = isEmployeeRole;
     const [checkingIn, setCheckingIn] = useState(false);
     const [checkingOut, setCheckingOut] = useState(false);
     const [showCheckoutConfirmation, setShowCheckoutConfirmation] = useState(false);
@@ -44,30 +48,32 @@ export default function DashboardPage() {
     const { data: todayStatus, refetch } = useQuery({
         queryKey: ['todayStatus'],
         queryFn: () => attendanceApi.getTodayStatus(),
-        enabled: user?.role === 'EMPLOYEE',
+        enabled: isEmployeeRole,
     });
 
     const { data: dashboardStats, refetch: refetchStats, isRefetching } = useQuery({
         queryKey: ['dashboardStats'],
         queryFn: () => attendanceApi.getDashboard(),
-        enabled: user?.role !== 'EMPLOYEE',
+        enabled: !isEmployeeRole,
     });
 
     const { data: historyData, isLoading: historyLoading, isError: historyError } = useQuery({
         queryKey: ['attendanceHistory', user?.role, weekStart],
-        queryFn: () => user?.role === 'EMPLOYEE'
+        queryFn: () => isEmployeeRole
             ? attendanceApi.getMyHistory({ startDate: weekStart.toISOString(), endDate: weekEnd.toISOString(), limit: 100 })
             : attendanceApi.getHistory({ startDate: weekStart.toISOString(), endDate: weekEnd.toISOString(), limit: 100 }),
         enabled: !!user,
         retry: 1
     });
 
+
+
     const chartData = weekDays.map(day => {
         const dateStr = format(day, 'yyyy-MM-dd');
         let value = 0;
 
         if (historyData?.items) {
-            if (user?.role === 'EMPLOYEE') {
+            if (isEmployeeRole) {
                 const record = historyData.items.find((item: any) => format(new Date(item.date), 'yyyy-MM-dd') === dateStr);
                 value = record ? Math.round((record.totalWorkMinutes || 0) / 60 * 10) / 10 : 0;
             } else {
@@ -140,7 +146,7 @@ export default function DashboardPage() {
                 }
             }
 
-            console.log("📍 Starting location fetch: High Accuracy (GPS)");
+            console.log("ðŸ“ Starting location fetch: High Accuracy (GPS)");
             // Attempt 1: High Accuracy (GPS) - 30s timeout
             // Using watchPosition wrapper which is often more reliable
             const position = await getPosition({
@@ -148,12 +154,12 @@ export default function DashboardPage() {
                 timeout: 30000,
                 maximumAge: 0 // Force fresh reading
             });
-            console.log("✅ High Accuracy Success:", position.coords);
+            console.log("âœ… High Accuracy Success:", position.coords);
             const { latitude, longitude } = position.coords;
             const address = await getAddressFromCoords(latitude, longitude);
             return { lat: latitude, lng: longitude, address };
         } catch (highError: any) {
-            console.warn(`⚠️ High accuracy failed: ${formatError(highError)}`);
+            console.warn(`âš ï¸ High accuracy failed: ${formatError(highError)}`);
 
             if (highError.code === 1) { // PERMISSION_DENIED
                 toast.error("Location permission denied. Please enable it in your browser settings.");
@@ -170,7 +176,7 @@ export default function DashboardPage() {
             }
 
             try {
-                console.log("📍 Fallback location fetch: Standard Accuracy");
+                console.log("ðŸ“ Fallback location fetch: Standard Accuracy");
                 // Attempt 2: Low Accuracy (WiFi/IP) - 20s timeout
                 // Relaxed constraints: standard accuracy, allow any cached position
                 const position = await getPosition({
@@ -178,12 +184,12 @@ export default function DashboardPage() {
                     timeout: 20000,
                     maximumAge: Infinity
                 });
-                console.log("✅ Standard Accuracy Success:", position.coords);
+                console.log("âœ… Standard Accuracy Success:", position.coords);
                 const { latitude, longitude } = position.coords;
                 const address = await getAddressFromCoords(latitude, longitude);
                 return { lat: latitude, lng: longitude, address };
             } catch (lowError: any) {
-                console.error(`❌ Standard accuracy failed: ${formatError(lowError)}`);
+                console.error(`âŒ Standard accuracy failed: ${formatError(lowError)}`);
 
                 if (lowError.code === 1) throw lowError;
 
@@ -340,7 +346,7 @@ export default function DashboardPage() {
         }
     };
 
-    const isEmployee = user?.role === 'EMPLOYEE';
+
 
     return (
         <div className="space-y-8">
@@ -367,76 +373,49 @@ export default function DashboardPage() {
                     {/* Quick Insight / Today's Overview */}
                     <div className="bg-[#111111] border border-white/5 rounded-[2rem] p-6 space-y-6 flex-1 flex flex-col justify-between">
                         <div className="flex-1">
-                            <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-6">
-                                <div>
-                                    <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-1">Today</p>
-                                    <p className="text-xl font-semibold text-white">
-                                        {format(today, 'EEEE, MMM do')}
-                                    </p>
-                                </div>
-                                <Calendar className="h-6 w-6 text-white" />
+                            <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-4">
+                                <p className="text-lg font-semibold text-white flex items-center gap-2">
+                                    <span className="text-zinc-500 text-sm uppercase tracking-wider">Today</span>
+                                    <span className="text-white">{format(today, 'EEEE, MMM do')}</span>
+                                </p>
                             </div>
 
-                            <div className="flex-1 flex flex-col gap-3">
-                                {isEmployee ? (
-                                    <>
-                                        <div className="flex items-center gap-4 group cursor-pointer hover:bg-zinc-900/50 p-2 -mx-2 rounded-xl transition-colors" onClick={() => router.push('/dashboard/holidays')}>
-                                            <div className="h-10 w-10 rounded-full bg-zinc-900 border border-white/5 flex items-center justify-center text-lime font-medium group-hover:scale-110 transition-transform">
-                                                <CheckCircle className="h-5 w-5" />
+                            <div className="flex-1 flex flex-col gap-3 overflow-y-auto max-h-[200px]">
+                                <div className="flex flex-col gap-3 h-full justify-between">
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-4 group cursor-pointer hover:bg-zinc-900/50 p-2 -mx-2 rounded-xl transition-colors" onClick={() => router.push('/dashboard/leaves?status=PENDING')}>
+                                            <div className="h-10 w-10 rounded-full bg-zinc-900 border border-white/5 flex items-center justify-center text-orange-400 font-medium group-hover:scale-110 transition-transform">
+                                                <AlertCircle className="h-5 w-5" />
                                             </div>
                                             <div>
-                                                <p className="text-sm font-semibold text-white">Next Holiday</p>
-                                                <p className="text-xs text-zinc-500">View Calendar</p>
+                                                <p className="text-sm font-semibold text-white">Pending Requests</p>
+                                                <p className="text-xs text-zinc-500">Review leave applications</p>
                                             </div>
                                         </div>
 
-                                        <div className="flex items-center gap-4 group cursor-pointer hover:bg-zinc-900/50 p-2 -mx-2 rounded-xl transition-colors" onClick={() => router.push('/dashboard/leaves')}>
+                                        <div className="flex items-center gap-4 group cursor-pointer hover:bg-zinc-900/50 p-2 -mx-2 rounded-xl transition-colors" onClick={() => router.push('/dashboard/employees')}>
                                             <div className="h-10 w-10 rounded-full bg-zinc-900 border border-white/5 flex items-center justify-center text-blue-400 font-medium group-hover:scale-110 transition-transform">
-                                                <Calendar className="h-5 w-5" />
+                                                <Users className="h-5 w-5" />
                                             </div>
                                             <div>
-                                                <p className="text-sm font-semibold text-white">Request Leave</p>
-                                                <p className="text-xs text-zinc-500">Plan your time off</p>
-                                            </div>
-                                        </div>
-                                    </>
-                                ) : (
-                                    <div className="flex flex-col gap-3 h-full justify-between">
-                                        <div className="space-y-3">
-                                            <div className="flex items-center gap-4 group cursor-pointer hover:bg-zinc-900/50 p-2 -mx-2 rounded-xl transition-colors" onClick={() => router.push('/dashboard/leaves?status=PENDING')}>
-                                                <div className="h-10 w-10 rounded-full bg-zinc-900 border border-white/5 flex items-center justify-center text-orange-400 font-medium group-hover:scale-110 transition-transform">
-                                                    <AlertCircle className="h-5 w-5" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-semibold text-white">Pending Requests</p>
-                                                    <p className="text-xs text-zinc-500">Review leave applications</p>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex items-center gap-4 group cursor-pointer hover:bg-zinc-900/50 p-2 -mx-2 rounded-xl transition-colors" onClick={() => router.push('/dashboard/employees')}>
-                                                <div className="h-10 w-10 rounded-full bg-zinc-900 border border-white/5 flex items-center justify-center text-blue-400 font-medium group-hover:scale-110 transition-transform">
-                                                    <Users className="h-5 w-5" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-semibold text-white">Manage Team</p>
-                                                    <p className="text-xs text-zinc-500">View all employees</p>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="mt-auto pt-6 border-t border-white/5">
-                                            <div className="flex items-center gap-4 group cursor-pointer hover:bg-zinc-900/50 p-2 -mx-2 rounded-xl transition-colors" onClick={() => router.push('/dashboard/reports')}>
-                                                <div className="h-10 w-10 rounded-full bg-zinc-900 border border-white/5 flex items-center justify-center text-purple-400 font-medium group-hover:scale-110 transition-transform">
-                                                    <TrendingUp className="h-5 w-5" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-semibold text-white">Generate Reports</p>
-                                                    <p className="text-xs text-zinc-500">Weekly & Monthly analysis</p>
-                                                </div>
+                                                <p className="text-sm font-semibold text-white">Manage Team</p>
+                                                <p className="text-xs text-zinc-500">View all employees</p>
                                             </div>
                                         </div>
                                     </div>
-                                )}
+
+                                    <div className="mt-auto pt-6 border-t border-white/5">
+                                        <div className="flex items-center gap-4 group cursor-pointer hover:bg-zinc-900/50 p-2 -mx-2 rounded-xl transition-colors" onClick={() => router.push('/dashboard/reports')}>
+                                            <div className="h-10 w-10 rounded-full bg-zinc-900 border border-white/5 flex items-center justify-center text-purple-400 font-medium group-hover:scale-110 transition-transform">
+                                                <TrendingUp className="h-5 w-5" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-semibold text-white">Generate Reports</p>
+                                                <p className="text-xs text-zinc-500">Weekly & Monthly analysis</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -750,7 +729,7 @@ export default function DashboardPage() {
                         </div>
                     </div>
                 </div>
-            </div>
+            </div >
 
             {/* Recent Activity / Logs Section to fill bottom space */}
             <div className="bg-[#111111] border border-white/5 rounded-[2.5rem] p-8">
@@ -831,7 +810,7 @@ export default function DashboardPage() {
                         </tbody>
                     </table>
                 </div>
-            </div>
+            </div >
             {/* Checkout Confirmation Modal */}
             {
                 showCheckoutConfirmation && (
@@ -866,6 +845,8 @@ export default function DashboardPage() {
                     </div>
                 )
             }
+
+
         </div >
     );
 }

@@ -1,4 +1,4 @@
-import { IsUUID, IsNumber, IsString } from 'class-validator';
+import { IsUUID, IsNumber, IsString, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class UpdateLeaveBalanceDto {
@@ -11,6 +11,7 @@ export class UpdateLeaveBalanceDto {
     adjustment: number;
 
     @ApiProperty()
+    @IsOptional()
     @IsString()
-    reason: string;
+    reason?: string;
 }

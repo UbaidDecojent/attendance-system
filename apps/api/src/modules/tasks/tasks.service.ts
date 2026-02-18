@@ -2,12 +2,18 @@ import { Injectable, NotFoundException, Logger, InternalServerErrorException } f
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { TaskStatus, NotificationType, Prisma } from '@prisma/client';
+import { startOfDay, endOfDay, eachDayOfInterval, isWeekend, parseISO, format } from 'date-fns';
+
+import { ZohoService } from './zoho.service';
 
 @Injectable()
 export class TasksService {
     private readonly logger = new Logger(TasksService.name);
 
-    constructor(private prisma: PrismaService) { }
+    constructor(
+        private prisma: PrismaService,
+        private zohoService: ZohoService
+    ) { }
 
     async create(companyId: string, data: CreateTaskDto) {
         try {
@@ -278,5 +284,122 @@ export class TasksService {
         return this.prisma.task.delete({
             where: { id, companyId }
         });
+    }
+
+    async getWorkload(companyId: string, startDateStr: string, endDateStr: string) {
+        // Zoho Integration Check
+        if (process.env.ZOHO_CLIENT_ID && process.env.ZOHO_REFRESH_TOKEN) {
+            return this.zohoService.getWorkload(startDateStr, endDateStr);
+        }
+
+        try {
+            const start = startOfDay(parseISO(startDateStr));
+            const end = endOfDay(parseISO(endDateStr));
+
+            const employees = await this.prisma.employee.findMany({
+                where: {
+                    companyId,
+                    isActive: true,
+                },
+                include: {
+                    user: true, // For avatar fallback? No, emp has avatar
+                    designation: true,
+                    assignedTasks: {
+                        where: {
+                            companyId,
+                            startDate: { lte: end },
+                            dueDate: { gte: start },
+                            // status: { not: 'COMPLETED' }
+                            // Keeping completed tasks in view might confuse "current load" vs "past load".
+                            // But ClickUp shows past load too. If I filter COMPLETED, past load disappears.
+                            // I'll keep COMPLETED tasks to show historical workload.
+                            // Change logic: Include ALL tasks in range.
+                        },
+                        include: {
+                            project: true,
+                            timeLogs: {
+                                select: {
+                                    date: true,
+                                    durationMinutes: true
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Process Workload
+            const workloadData = employees.map(emp => {
+                const dailyLoad: Record<string, number> = {};
+                const taskDetails: any[] = [];
+
+                emp.assignedTasks.forEach(task => {
+                    if (!task.startDate || !task.dueDate || !task.estimatedHours || task.estimatedHours <= 0) return;
+
+                    const taskStart = startOfDay(task.startDate);
+                    const taskDue = endOfDay(task.dueDate);
+
+                    // Calculate total working days in task duration
+                    // Note: If taskStart > taskDue, interval throws error. Check validity.
+                    if (taskStart > taskDue) return;
+
+                    const totalDaysInterval = eachDayOfInterval({ start: taskStart, end: taskDue });
+                    const workingDays = totalDaysInterval.filter(day => !isWeekend(day)).length;
+
+                    if (workingDays === 0) return;
+
+                    const hoursPerDay = task.estimatedHours / workingDays;
+
+                    // Distribute to view range
+                    const effectiveStart = taskStart < start ? start : taskStart;
+                    const effectiveEnd = taskDue > end ? end : taskDue;
+
+                    if (effectiveStart > effectiveEnd) return;
+
+                    const viewDays = eachDayOfInterval({ start: effectiveStart, end: effectiveEnd });
+
+                    viewDays.forEach(day => {
+                        if (isWeekend(day)) return;
+                        const dateKey = format(day, 'yyyy-MM-dd');
+                        dailyLoad[dateKey] = (dailyLoad[dateKey] || 0) + hoursPerDay;
+                    });
+
+                    // Calculate logged hours
+                    const dailyLogged: Record<string, number> = {};
+                    (task as any).timeLogs?.forEach((log: any) => {
+                        const dKey = format(new Date(log.date), 'yyyy-MM-dd');
+                        dailyLogged[dKey] = (dailyLogged[dKey] || 0) + (log.durationMinutes / 60);
+                    });
+
+                    taskDetails.push({
+                        id: task.id,
+                        name: task.name,
+                        project: task.project.title,
+                        startDate: task.startDate,
+                        dueDate: task.dueDate,
+                        estimatedHours: task.estimatedHours,
+                        dailyHours: hoursPerDay,
+                        status: task.status,
+                        billingType: (task as any).billingType,
+                        dailyLoggedHours: dailyLogged
+                    });
+                });
+
+                return {
+                    id: emp.id,
+                    name: `${emp.firstName} ${emp.lastName}`,
+                    avatar: emp.avatar,
+                    designation: emp.designation?.name || 'Employee',
+                    capacity: 8,
+                    workload: dailyLoad,
+                    tasks: taskDetails
+                };
+            });
+
+            return workloadData;
+        } catch (error) {
+            this.logger.error(`Failed to get workload: ${error.message}`, error.stack);
+            throw new InternalServerErrorException('Failed to fetch workload data');
+        }
     }
 }

@@ -12,6 +12,8 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { WinstonLoggerService } from './common/services/logger.service';
 
+// Force rebuild 19
+
 async function bootstrap() {
     const app = await NestFactory.create(AppModule, {
         bufferLogs: true,
@@ -98,7 +100,8 @@ async function bootstrap() {
 
     const port = configService.get<number>('PORT') || 3001;
 
-    await app.listen(port);
+    const server = await app.listen(port);
+    server.setTimeout(300000); // 5 minutes timeout for long-running Zoho syncs
 
     logger.log(`🚀 Application is running on: http://localhost:${port}/api`, 'Bootstrap');
     logger.log(`📚 API Documentation: http://localhost:${port}/api/docs`, 'Bootstrap');

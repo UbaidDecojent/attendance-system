@@ -13,8 +13,7 @@ import { toast } from 'sonner';
 
 const schema = z.object({
     leaveTypeId: z.string().min(1, 'Select a leave type'),
-    adjustment: z.number({ invalid_type_error: 'Must be a number' }).refine(val => val !== 0, 'Adjustment cannot be zero'),
-    reason: z.string().min(3, 'Reason is required'),
+    adjustment: z.number({ invalid_type_error: 'Must be a number' }).min(0, 'Balance cannot be negative'),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -66,6 +65,14 @@ export default function ManageLeaveBalanceModal({
         queryFn: () => employeesApi.getLeaveBalances(employeeId),
         enabled: isOpen,
     });
+    const balanceData = balances?.find((b: any) => b.leaveTypeId === selectedTypeId);
+    const currentBalance = balanceData ? balanceData.remaining : null;
+
+    useEffect(() => {
+        if (typeof currentBalance === 'number') {
+            setValue('adjustment', currentBalance);
+        }
+    }, [currentBalance, setValue]);
 
     const mutation = useMutation({
         mutationFn: (data: FormData) => employeesApi.updateLeaveBalance(employeeId, data),
@@ -87,7 +94,6 @@ export default function ManageLeaveBalanceModal({
 
     if (!isOpen) return null;
 
-    const currentBalance = balances && selectedTypeId ? (balances[selectedTypeId] ?? 0) : null;
     const selectedType = leaveTypes?.find((t: any) => t.id === selectedTypeId);
 
     return (
@@ -115,7 +121,9 @@ export default function ManageLeaveBalanceModal({
                             className="w-full px-4 py-3 rounded-xl border bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all appearance-none"
                         >
                             <option value="">Select leave type</option>
-                            {leaveTypes?.map((type: any) => (
+                            {leaveTypes?.filter((type: any) =>
+                                ['Annual Leave', 'Casual Leave', 'Sick Leave'].includes(type.name)
+                            ).map((type: any) => (
                                 <option key={type.id} value={type.id}>
                                     {type.name}
                                 </option>
@@ -140,43 +148,21 @@ export default function ManageLeaveBalanceModal({
                         </div>
                     )}
 
-                    {/* Adjustment */}
+                    {/* New Balance Input (mapped to 'adjustment' for API compatibility) */}
                     <div>
-                        <label className="text-sm font-medium mb-2 block">Adjustment Amount</label>
+                        <label className="text-sm font-medium mb-2 block">New Balance</label>
                         <p className="text-xs text-muted-foreground mb-2">
-                            Positive to add days, negative to deduct days.
+                            Enter the total number of leaves available for this employee.
                         </p>
                         <input
                             type="number"
                             step="0.5"
                             {...register('adjustment', { valueAsNumber: true })}
                             className="w-full px-4 py-3 rounded-xl border bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-                            placeholder="e.g. 5 or -2.5"
+                            placeholder="e.g. 12"
                         />
                         {errors.adjustment && (
                             <p className="text-destructive text-sm mt-1">{errors.adjustment.message}</p>
-                        )}
-
-                        {watch('adjustment') !== 0 && selectedTypeId && typeof currentBalance === 'number' && (
-                            <p className="text-sm text-muted-foreground mt-2 text-right">
-                                New Balance: <span className="font-medium text-foreground">
-                                    {Number(currentBalance) + Number(watch('adjustment'))}
-                                </span>
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Reason */}
-                    <div>
-                        <label className="text-sm font-medium mb-2 block">Reason</label>
-                        <textarea
-                            {...register('reason')}
-                            rows={3}
-                            className="w-full px-4 py-3 rounded-xl border bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all resize-none"
-                            placeholder="Why is this adjustment being made?"
-                        />
-                        {errors.reason && (
-                            <p className="text-destructive text-sm mt-1">{errors.reason.message}</p>
                         )}
                     </div>
 
