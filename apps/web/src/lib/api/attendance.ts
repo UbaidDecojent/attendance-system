@@ -54,6 +54,23 @@ export const attendanceApi = {
         };
     },
 
+    async getEmployeeSummary(params?: {
+        startDate?: string;
+        endDate?: string;
+        departmentId?: string;
+        page?: number;
+        limit?: number;
+    }) {
+        const response = await api.get('/attendance/summary/employees', { params });
+        // Handle both wrapped and unwrapped responses
+        const data = response.data?.data || response.data?.items || [];
+        const meta = response.data?.meta || {};
+        return {
+            items: data,
+            meta,
+        };
+    },
+
     async getDashboard(date?: string) {
         const response = await api.get('/attendance/dashboard', { params: { date } });
         return response.data.data;

@@ -176,6 +176,16 @@ export class AttendanceController {
 
     // ==================== HR/ADMIN OPERATIONS ====================
 
+    @Get('summary/employees')
+    @Roles(UserRole.COMPANY_ADMIN, UserRole.HR_MANAGER, UserRole.TEAM_MANAGER)
+    @ApiOperation({ summary: 'Get employee-wise attendance summary' })
+    async getEmployeeSummary(
+        @CurrentUser() user: any,
+        @Query() query: AttendanceQueryDto,
+    ) {
+        return this.attendanceService.getEmployeeSummary(user.companyId, query);
+    }
+
     @Get('history')
     @Roles(UserRole.COMPANY_ADMIN, UserRole.HR_MANAGER, UserRole.TEAM_MANAGER)
     @ApiOperation({ summary: 'Get attendance history for all employees' })

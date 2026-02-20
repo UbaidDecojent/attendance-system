@@ -248,7 +248,12 @@ export class EmployeesService {
                     employeeId: true,
                     leaveTypeId: true,
                     totalDays: true,
+                    reason: true,
+                    startDate: true,
+                    endDate: true,
+                    leaveType: { select: { name: true, color: true } },
                 },
+                orderBy: { startDate: 'desc' },
             });
 
             // Fetch Holidays since 2026-01-01
@@ -330,13 +335,25 @@ export class EmployeesService {
                     };
                 });
 
-                // Calculate total used (Approved Leaves + Absent Days)
-                // Note: We don't deduct Absent Days from specific leave type balances as we don't know which one.
-                // It just appears in "Leaves Taken".
+                // Calculate total used (Approved Leaves only)
+                // Note: We track Absent Days separately, but leave "totalUsed" strictly for 
+                // approved leave requests so that Total = Taken + Remaining.
                 const leavesUsedFromRequests = leaves.reduce((sum, l) => sum + l.used, 0);
-                const totalUsed = leavesUsedFromRequests + absentDays;
+                const totalUsed = leavesUsedFromRequests;
 
                 const totalRemaining = leaves.reduce((sum, l) => sum + l.remaining, 0);
+
+                const recentLeaves = approvedLeaves
+                    .filter((l) => l.employeeId === emp.id)
+                    .slice(0, 5) // Last 5 leaves
+                    .map((l) => ({
+                        reason: l.reason,
+                        totalDays: l.totalDays,
+                        startDate: l.startDate,
+                        endDate: l.endDate,
+                        leaveTypeName: l.leaveType?.name || 'Leave',
+                        color: l.leaveType?.color || '#4F46E5',
+                    }));
 
                 return {
                     ...emp,
@@ -344,7 +361,8 @@ export class EmployeesService {
                         details: leaves,
                         totalUsed, // Now includes absent days
                         totalRemaining,
-                        absentDays // Optional: Helpful if frontend wants to show split
+                        absentDays, // Optional: Helpful if frontend wants to show split
+                        recentLeaves,
                     }
                 };
             });

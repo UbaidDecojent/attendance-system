@@ -12,6 +12,7 @@ import {
     SortingState,
 } from "@tanstack/react-table"
 import { ChevronLeft, ChevronRight, Search } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface DataTableProps<TData, TValue> {
     columns: ColumnDef<TData, TValue>[]
@@ -26,6 +27,7 @@ interface DataTableProps<TData, TValue> {
         total?: number
     }
     isLoading?: boolean
+    onRowClick?: (row: TData) => void
 }
 
 export function DataTable<TData, TValue>({
@@ -36,7 +38,8 @@ export function DataTable<TData, TValue>({
     pageCount,
     onPageChange,
     pagination: externalPagination,
-    isLoading
+    isLoading,
+    onRowClick
 }: DataTableProps<TData, TValue>) {
     const [sorting, setSorting] = React.useState<SortingState>([])
     const [globalFilter, setGlobalFilter] = React.useState("")
@@ -124,7 +127,11 @@ export function DataTable<TData, TValue>({
                                     <tr
                                         key={row.id}
                                         data-state={row.getIsSelected() && "selected"}
-                                        className="group hover:bg-white/[0.02] transition-colors"
+                                        onClick={() => onRowClick && onRowClick(row.original)}
+                                        className={cn(
+                                            "group hover:bg-white/[0.02] transition-colors",
+                                            onRowClick && "cursor-pointer"
+                                        )}
                                     >
                                         {row.getVisibleCells().map((cell) => (
                                             <td key={cell.id} className="py-5 px-8">

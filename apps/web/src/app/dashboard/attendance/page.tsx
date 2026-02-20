@@ -52,10 +52,12 @@ export default function AttendancePage() {
     const startDate = format(dateRange.from, 'yyyy-MM-dd');
     const endDate = format(dateRange.to, 'yyyy-MM-dd');
     const [isCorrectionOpen, setIsCorrectionOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState<'history' | 'requests' | 'archived'>('history');
+    const [activeTab, setActiveTab] = useState<'history' | 'employees' | 'requests' | 'archived'>('history');
 
     // For Admin: track which date card is selected (null = showing cards view)
     const [selectedDateForTable, setSelectedDateForTable] = useState<string | null>(null);
+    // For Admin: track which employee card is selected
+    const [selectedEmployeeForTable, setSelectedEmployeeForTable] = useState<string | null>(null);
 
     const { data: history, isLoading } = useQuery({
         queryKey: ['attendanceHistory', startDate, endDate, isAdmin],
@@ -68,6 +70,27 @@ export default function AttendancePage() {
         queryKey: ['employeeStats', isAdmin],
         queryFn: () => employeesApi.getStats(),
         enabled: isAdmin,
+    });
+
+    const { data: employeeSummary, isLoading: isLoadingEmployees, isError: isEmployeeError, error: employeeError, refetch: refetchEmployees } = useQuery({
+        queryKey: ['employeeSummary', startDate, endDate, isAdmin],
+        queryFn: () => attendanceApi.getEmployeeSummary({
+            startDate,
+            endDate,
+            limit: 50
+        }),
+        enabled: isAdmin && activeTab === 'employees',
+    });
+
+    const { data: employeeDetailHistory, isLoading: isLoadingEmployeeDetail } = useQuery({
+        queryKey: ['employeeHistory', selectedEmployeeForTable, startDate, endDate],
+        queryFn: () => attendanceApi.getHistory({
+            employeeId: selectedEmployeeForTable!,
+            startDate,
+            endDate,
+            limit: 100
+        }),
+        enabled: !!selectedEmployeeForTable,
     });
 
     const { data: regularizationsData, refetch: refetchRequests } = useQuery({
@@ -200,7 +223,7 @@ export default function AttendancePage() {
             },
         ];
 
-        if (isAdmin) {
+        if (isAdmin && !selectedEmployeeForTable) {
             cols.push({
                 accessorKey: 'employee',
                 header: 'Employee',
@@ -392,12 +415,13 @@ export default function AttendancePage() {
         );
 
         return cols;
-    }, [isAdmin]);
+    }, [isAdmin, selectedEmployeeForTable]);
 
     // Reset selected date when date range changes
     const handleDateRangeChange = (newRange: { from: Date; to: Date }) => {
         setDateRange(newRange);
         setSelectedDateForTable(null);
+        setSelectedEmployeeForTable(null);
     };
 
     // Get status badges for a date card (returns array for multiple badges)
@@ -456,7 +480,7 @@ export default function AttendancePage() {
                         </button>
                     )}
                 </div>
-            </div>
+            </div >
 
             {/* Tabs */}
             <div className="flex items-center gap-1 p-1 bg-[#111111] border border-white/5 rounded-2xl w-fit">
@@ -469,6 +493,17 @@ export default function AttendancePage() {
                 >
                     History
                 </button>
+                {isAdmin && (
+                    <button
+                        onClick={() => setActiveTab('employees')}
+                        className={cn(
+                            "px-4 py-2 rounded-xl text-sm font-bold transition-all",
+                            activeTab === 'employees' ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-500 hover:text-white"
+                        )}
+                    >
+                        Employees
+                    </button>
+                )}
                 <button
                     onClick={() => setActiveTab('requests')}
                     className={cn(
@@ -483,18 +518,20 @@ export default function AttendancePage() {
                         </span>
                     )}
                 </button>
-                {(isAdmin || regularizations?.some((r: any) => r.status !== 'PENDING')) && (
-                    <button
-                        onClick={() => setActiveTab('archived')}
-                        className={cn(
-                            "px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2",
-                            activeTab === 'archived' ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-500 hover:text-white"
-                        )}
-                    >
-                        Archived
-                    </button>
-                )}
-            </div>
+                {
+                    (isAdmin || regularizations?.some((r: any) => r.status !== 'PENDING')) && (
+                        <button
+                            onClick={() => setActiveTab('archived')}
+                            className={cn(
+                                "px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2",
+                                activeTab === 'archived' ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-500 hover:text-white"
+                            )}
+                        >
+                            Archived
+                        </button>
+                    )
+                }
+            </div >
 
             {activeTab === 'history' ? (
                 <>
@@ -665,6 +702,166 @@ export default function AttendancePage() {
                         </>
                     )}
                 </>
+            ) : activeTab === 'employees' ? (
+                <>
+                    {/* Date Range Filter */}
+                    <div className="flex items-center justify-start bg-[#111111] border border-white/5 rounded-[1.5rem] p-2">
+                        <ZohoDatePicker
+                            dateRange={dateRange}
+                            onChange={handleDateRangeChange}
+                        />
+                    </div>
+
+                    {selectedEmployeeForTable ? (
+                        /* Detail View for Selected Employee */
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <button
+                                    onClick={() => setSelectedEmployeeForTable(null)}
+                                    className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors text-sm font-medium"
+                                >
+                                    <ArrowLeft className="h-4 w-4" />
+                                    Back to all employees
+                                </button>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                                <div className="p-3 rounded-xl bg-lime/10 border border-lime/20">
+                                    <UserCheck className="h-5 w-5 text-lime" />
+                                </div>
+                                <div>
+                                    <h2 className="text-lg font-bold text-white">
+                                        {employeeSummary?.items?.find((e: any) => e.id === selectedEmployeeForTable)?.firstName}
+                                        {' '}
+                                        {employeeSummary?.items?.find((e: any) => e.id === selectedEmployeeForTable)?.lastName}
+                                    </h2>
+                                    <p className="text-sm text-zinc-500">
+                                        Attendance History ({formatDate(dateRange.from, 'MMM d')} - {formatDate(dateRange.to, 'MMM d')})
+                                    </p>
+                                </div>
+                            </div>
+
+                            {isLoadingEmployeeDetail ? (
+                                <div className="bg-[#111111] border border-white/5 rounded-[2rem] p-12 text-center text-zinc-500 animate-pulse">
+                                    Loading details...
+                                </div>
+                            ) : (
+                                <DataTable columns={columns} data={employeeDetailHistory?.items || []} />
+                            )}
+                        </div>
+                    ) : isEmployeeError ? (
+                        <div className="col-span-full flex flex-col items-center justify-center p-12 text-center text-muted-foreground bg-zinc-900/50 rounded-xl border border-white/5">
+                            <p className="text-red-400 mb-2">Error: {(employeeError as any)?.response?.data?.message || (employeeError as any)?.message || 'Unknown error'}</p>
+                            <button onClick={() => refetchEmployees()} className="mt-4 text-sm text-primary hover:underline">Retry</button>
+                        </div>
+                    ) : isLoadingEmployees ? (
+                        <div className="bg-[#111111] border border-white/5 rounded-[2rem] p-12 text-center text-zinc-500 animate-pulse">
+                            Loading employee summary...
+                        </div>
+                    ) : (
+                        /* Employee Cards Grid */
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
+                            {employeeSummary?.items?.map((emp: any) => {
+                                const stats = emp.stats || { present: 0, absent: 0, late: 0, halfDay: 0 };
+                                const badges: { text: string; type: 'late' | 'absent' | 'halfday' | 'ontime' }[] = [];
+
+                                if (stats.late > 0) badges.push({ text: `${stats.late} Late`, type: 'late' });
+                                if (stats.absent > 0) badges.push({ text: `${stats.absent} Absent`, type: 'absent' });
+                                if (stats.halfDay > 0) badges.push({ text: `${stats.halfDay} Halfday`, type: 'halfday' });
+                                if (badges.length === 0) badges.push({ text: 'All On Time', type: 'ontime' });
+
+                                // Border color priority
+                                const borderColor = stats.absent > 0 ? 'border-l-red-400' :
+                                    stats.late > 0 ? 'border-l-amber-400' :
+                                        stats.halfDay > 0 ? 'border-l-zinc-400' : 'border-l-lime';
+
+                                return (
+                                    <button
+                                        key={emp.id}
+                                        onClick={() => setSelectedEmployeeForTable(emp.id)}
+                                        className={cn(
+                                            "group bg-[#111111] border-l-[8px] border border-white/5 rounded-xl text-left transition-all hover:bg-[#151515]",
+                                            borderColor
+                                        )}
+                                    >
+                                        <div className="p-4">
+                                            {/* Header */}
+                                            <div className="flex items-center justify-between mb-5 gap-2">
+                                                <div>
+                                                    <h3 className="text-sm font-bold text-white">
+                                                        {emp.firstName} {emp.lastName}
+                                                    </h3>
+                                                    <p className="text-[10px] text-zinc-500 font-medium mt-0.5">
+                                                        {formatDate(dateRange.from, 'MMM d')} - {formatDate(dateRange.to, 'MMM d')}
+                                                    </p>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                                                    {badges.slice(0, 2).map((badge, idx) => {
+                                                        const styles = getBadgeStyles(badge.type);
+                                                        return (
+                                                            <span
+                                                                key={idx}
+                                                                className={cn(
+                                                                    'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold',
+                                                                    styles.bg, styles.text
+                                                                )}
+                                                            >
+                                                                <span className={cn('w-1.5 h-1.5 rounded-full', styles.dot)} />
+                                                                {badge.text}
+                                                            </span>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+
+                                            {/* Stats Grid */}
+                                            <div className="flex justify-between mb-2">
+                                                {/* Present */}
+                                                <div className="text-center flex-1">
+                                                    <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                                                        <span className="w-2 h-2 rounded-full bg-lime" />
+                                                        <p className="text-[11px] text-zinc-400 font-medium">Present</p>
+                                                    </div>
+                                                    <p className="text-xl font-bold text-white">{stats.present}</p>
+                                                </div>
+
+                                                {/* Absent */}
+                                                <div className="text-center flex-1">
+                                                    <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                                                        <span className="w-2 h-2 rounded-full bg-red-400" />
+                                                        <p className="text-[11px] text-zinc-400 font-medium">Absent</p>
+                                                    </div>
+                                                    <p className="text-xl font-bold text-white">{stats.absent}</p>
+                                                </div>
+
+                                                {/* Late */}
+                                                <div className="text-center flex-1">
+                                                    <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                                                        <span className="w-2 h-2 rounded-full bg-amber-400" />
+                                                        <p className="text-[11px] text-zinc-400 font-medium">Late</p>
+                                                    </div>
+                                                    <p className="text-xl font-bold text-white">{stats.late}</p>
+                                                </div>
+
+                                                {/* Halfday */}
+                                                <div className="text-center flex-1">
+                                                    <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                                                        <span
+                                                            className="w-2 h-2 rounded-full"
+                                                            style={{ background: 'conic-gradient(#a3e635 0deg 180deg, #525252 180deg 360deg)' }}
+                                                        />
+                                                        <p className="text-[11px] text-zinc-400 font-medium">Halfday</p>
+                                                    </div>
+                                                    <p className="text-xl font-bold text-white">{stats.halfDay || 0}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
+                </>
             ) : activeTab === 'requests' ? (
                 <RegularizationList
                     requests={regularizations ? regularizations.filter((r: any) => r.status === 'PENDING') : []}
@@ -677,51 +874,54 @@ export default function AttendancePage() {
                     isAdmin={isAdmin}
                     onUpdate={refetchRequests}
                 />
-            )}
+            )
+            }
 
             {/* Location Modal */}
-            {selectedLocation && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                    <div className="bg-zinc-900 border border-white/10 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-                        <div className="p-4 border-b border-white/5 flex items-center justify-between">
-                            <div>
-                                <h3 className="text-lg font-semibold text-white">{selectedLocation.type} Location</h3>
-                                <p className="text-sm text-muted-foreground">Lat: {selectedLocation.lat?.toFixed(6)}, Lng: {selectedLocation.lng?.toFixed(6)}</p>
+            {
+                selectedLocation && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                        <div className="bg-zinc-900 border border-white/10 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                            <div className="p-4 border-b border-white/5 flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-white">{selectedLocation.type} Location</h3>
+                                    <p className="text-sm text-muted-foreground">Lat: {selectedLocation.lat?.toFixed(6)}, Lng: {selectedLocation.lng?.toFixed(6)}</p>
+                                </div>
+                                <button
+                                    onClick={() => setSelectedLocation(null)}
+                                    className="p-2 hover:bg-white/5 rounded-lg transition-colors"
+                                >
+                                    <X className="h-5 w-5 text-muted-foreground" />
+                                </button>
                             </div>
-                            <button
-                                onClick={() => setSelectedLocation(null)}
-                                className="p-2 hover:bg-white/5 rounded-lg transition-colors"
-                            >
-                                <X className="h-5 w-5 text-muted-foreground" />
-                            </button>
-                        </div>
-                        <div className="aspect-video w-full bg-muted">
-                            <iframe
-                                width="100%"
-                                height="100%"
-                                style={{ border: 0 }}
-                                loading="lazy"
-                                allowFullScreen
-                                src={`https://maps.google.com/maps?q=${selectedLocation.lat},${selectedLocation.lng}&z=15&output=embed`}
-                            ></iframe>
-                        </div>
-                        {selectedLocation.address && (
-                            <div className="p-4 bg-muted/20 border-t border-white/5">
-                                <p className="text-sm text-zinc-300 flex items-start gap-2">
-                                    <MapPin className="h-4 w-4 mt-0.5 text-primary shrink-0" />
-                                    {selectedLocation.address}
-                                </p>
+                            <div className="aspect-video w-full bg-muted">
+                                <iframe
+                                    width="100%"
+                                    height="100%"
+                                    style={{ border: 0 }}
+                                    loading="lazy"
+                                    allowFullScreen
+                                    src={`https://maps.google.com/maps?q=${selectedLocation.lat},${selectedLocation.lng}&z=15&output=embed`}
+                                ></iframe>
                             </div>
-                        )}
+                            {selectedLocation.address && (
+                                <div className="p-4 bg-muted/20 border-t border-white/5">
+                                    <p className="text-sm text-zinc-300 flex items-start gap-2">
+                                        <MapPin className="h-4 w-4 mt-0.5 text-primary shrink-0" />
+                                        {selectedLocation.address}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             <CorrectionRequestModal
                 isOpen={isCorrectionOpen}
                 onClose={() => setIsCorrectionOpen(false)}
                 onSuccess={refetchRequests}
             />
-        </div>
+        </div >
     );
 }

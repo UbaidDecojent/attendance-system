@@ -234,8 +234,8 @@ async function main() {
             update: {},
             create: {
                 companyId: demoCompany.id,
-                name: 'Paid Leave',
-                code: 'PL',
+                name: 'Annual Leave',
+                code: 'AL',
                 defaultDays: 15,
                 color: '#3B82F6',
             },

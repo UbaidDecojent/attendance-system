@@ -34,6 +34,7 @@ export default function LeavesPage() {
     const [balancesPage, setBalancesPage] = useState(1);
     const [showNewLeaveModal, setShowNewLeaveModal] = useState(false);
     const [selectedEmployeeForLeave, setSelectedEmployeeForLeave] = useState<{ id: string; name: string } | null>(null);
+    const [selectedEmployeeLeaves, setSelectedEmployeeLeaves] = useState<any>(null);
 
     const isManager = user?.role !== 'EMPLOYEE';
 
@@ -240,56 +241,104 @@ export default function LeavesPage() {
     }, [isManager]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Columns for MANAGE LEAVES
-    const manageColumns: ColumnDef<any>[] = useMemo(() => [
-        {
-            accessorKey: 'employee',
-            header: 'Employee',
-            cell: ({ row }) => (
-                <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full bg-zinc-800 border border-white/5 flex items-center justify-center text-white text-xs font-bold">
-                        {row.original.firstName?.charAt(0)}{row.original.lastName?.charAt(0)}
-                    </div>
-                    <div>
-                        <p className="font-bold text-white">{row.original.firstName} {row.original.lastName}</p>
-                        <p className="text-xs text-zinc-500">{row.original.designation?.name || 'No role'}</p>
-                    </div>
+    const manageColumns: ColumnDef<any>[] = useMemo(() => {
+        // Helper to render leave stat cell
+        const renderLeaveStat = (leaveTypeName: string, row: any) => {
+            const details = row.original.leaveSummary?.details || [];
+            const leave = details.find((l: any) => l.leaveTypeName.toLowerCase().includes(leaveTypeName.toLowerCase()));
+
+            if (!leave) return <span className="text-zinc-500 text-sm">-</span>;
+
+            return (
+                <div className="flex flex-col text-sm">
+                    <span className="font-bold text-white">{leave.total} Total</span>
+                    <span className="text-xs text-lime">{leave.remaining} Remaining</span>
                 </div>
-            ),
-        },
-        {
-            accessorKey: 'leavesTaken',
-            header: 'Leaves Taken',
-            cell: ({ row }) => (
-                <span className="font-bold text-zinc-300">
-                    {row.original.leaveSummary?.totalUsed ?? 0}
-                </span>
-            ),
-        },
-        {
-            accessorKey: 'leaveBalance',
-            header: 'Leave Balance (Remaining)',
-            cell: ({ row }) => (
-                <span className="font-bold text-zinc-300">
-                    {row.original.leaveSummary?.totalRemaining ?? 0}
-                </span>
-            ),
-        },
-        {
-            id: 'actions',
-            header: 'Actions',
-            cell: ({ row }) => (
-                <button
-                    onClick={() => setSelectedEmployeeForLeave({
-                        id: row.original.id,
-                        name: `${row.original.firstName} ${row.original.lastName}`
-                    })}
-                    className="px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 text-xs font-medium transition-colors hover:text-white text-zinc-400"
-                >
-                    Edit Balance
-                </button>
-            ),
-        },
-    ], []);
+            );
+        };
+
+        return [
+            {
+                accessorKey: 'employee',
+                header: 'Employee',
+                cell: ({ row }) => (
+                    <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-full bg-zinc-800 border border-white/5 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                            {row.original.firstName?.charAt(0)}{row.original.lastName?.charAt(0)}
+                        </div>
+                        <div className="min-w-0">
+                            <p className="font-bold text-white truncate">{row.original.firstName} {row.original.lastName}</p>
+                            <p className="text-xs text-zinc-500 truncate">{row.original.designation?.name || 'No role'}</p>
+                        </div>
+                    </div>
+                ),
+            },
+            {
+                id: 'annualLeave',
+                header: 'Annual Leave',
+                cell: ({ row }) => renderLeaveStat('annual', row),
+            },
+            {
+                id: 'casualLeave',
+                header: 'Casual Leave',
+                cell: ({ row }) => renderLeaveStat('casual', row),
+            },
+            {
+                id: 'sickLeave',
+                header: 'Sick Leave',
+                cell: ({ row }) => renderLeaveStat('sick', row),
+            },
+            {
+                id: 'totalLeaves',
+                header: 'Total Leaves',
+                cell: ({ row }) => {
+                    const details = row.original.leaveSummary?.details || [];
+                    const totalAllocated = details.reduce((sum: number, l: any) => sum + l.total, 0);
+                    const totalRemaining = details.reduce((sum: number, l: any) => sum + l.remaining, 0);
+                    return (
+                        <div className="flex flex-col text-sm">
+                            <span className="font-bold text-white">{totalAllocated} Total</span>
+                            <span className="text-xs text-lime">{totalRemaining} Remaining</span>
+                        </div>
+                    );
+                },
+            },
+            {
+                id: 'recentLeaves',
+                header: 'Leaves Taken',
+                cell: ({ row }) => {
+                    const recentLeaves = row.original.leaveSummary?.recentLeaves || [];
+                    if (recentLeaves.length === 0) {
+                        return <span className="text-zinc-500 text-sm">No leaves taken</span>;
+                    }
+                    const totalDaysTaken = row.original.leaveSummary?.totalUsed || 0;
+                    return (
+                        <div className="flex flex-col text-sm">
+                            <span className="font-bold text-zinc-300">{totalDaysTaken} day{totalDaysTaken !== 1 ? 's' : ''}</span>
+                        </div>
+                    );
+                },
+            },
+            {
+                id: 'actions',
+                header: 'Actions',
+                cell: ({ row }) => (
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedEmployeeForLeave({
+                                id: row.original.id,
+                                name: `${row.original.firstName} ${row.original.lastName}`
+                            });
+                        }}
+                        className="px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 text-xs font-medium transition-colors hover:text-white text-zinc-400 whitespace-nowrap"
+                    >
+                        Edit Balance
+                    </button>
+                ),
+            },
+        ];
+    }, []);
 
     return (
         <div className="space-y-6">
@@ -457,6 +506,7 @@ export default function LeavesPage() {
                             total: balanceMeta?.totalItems || 0,
                         }}
                         isLoading={isLoadingBalances}
+                        onRowClick={(row) => setSelectedEmployeeLeaves(row)}
                     />
                 </div>
             )}
@@ -479,6 +529,53 @@ export default function LeavesPage() {
                     />
                 )
             }
+
+            {/* Employee Leaves Details Modal */}
+            {selectedEmployeeLeaves && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                    <div className="bg-[#111111] border border-white/10 rounded-[2rem] w-full max-w-lg p-6 flex flex-col max-h-[90vh]">
+                        <div className="flex items-center justify-between mb-6">
+                            <div>
+                                <h2 className="text-xl font-bold bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">Recent Leaves</h2>
+                                <p className="text-sm text-zinc-400 mt-1">
+                                    {selectedEmployeeLeaves.firstName} {selectedEmployeeLeaves.lastName}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setSelectedEmployeeLeaves(null)}
+                                className="p-2 hover:bg-white/5 rounded-full transition-colors text-zinc-500 hover:text-white"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                            {(!selectedEmployeeLeaves.leaveSummary?.recentLeaves || selectedEmployeeLeaves.leaveSummary.recentLeaves.length === 0) ? (
+                                <div className="text-center text-zinc-500 py-8 text-sm">No leaves taken by this employee.</div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {selectedEmployeeLeaves.leaveSummary.recentLeaves.map((l: any, i: number) => (
+                                        <div key={i} className="flex flex-col p-4 bg-zinc-900/50 rounded-xl border border-white/5 text-sm">
+                                            <div className="flex items-center justify-between gap-2 mb-2">
+                                                <span
+                                                    className="font-bold truncate px-2 py-1 rounded-md text-xs"
+                                                    style={{ backgroundColor: `${l.color}20`, color: l.color }}
+                                                >
+                                                    {l.leaveTypeName}
+                                                </span>
+                                                <span className="text-zinc-400 font-medium">
+                                                    {l.totalDays} day{l.totalDays > 1 ? 's' : ''} ({formatDate(l.startDate, 'MMM d')} - {formatDate(l.endDate, 'MMM d')})
+                                                </span>
+                                            </div>
+                                            <p className="text-zinc-300 mt-2">{l.reason || 'No reason provided.'}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 }

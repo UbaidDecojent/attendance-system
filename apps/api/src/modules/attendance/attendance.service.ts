@@ -23,6 +23,9 @@ import {
     parseISO,
     format,
     differenceInBusinessDays,
+    eachDayOfInterval,
+    isWeekend,
+    isSameDay,
 } from 'date-fns';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { AttendanceStatus, AttendanceType } from '@prisma/client';
@@ -695,7 +698,225 @@ export class AttendanceService {
         };
     }
 
-    // ==================== MANUAL ENTRY (HR/Admin) ====================
+    async getEmployeeSummary(
+        companyId: string,
+        query: AttendanceQueryDto,
+    ) {
+        const { startDate, endDate, departmentId } = query;
+        const page = Number(query.page) || 1;
+        const limit = Number(query.limit) || 20;
+        const skip = (page - 1) * limit;
+
+        // 1. Fetch Employees (Paginated)
+        const whereEmployee: any = {
+            companyId,
+            isActive: true, // Only showing active employees
+        };
+        if (departmentId) whereEmployee.departmentId = departmentId;
+
+        const [employees, totalEmployees] = await Promise.all([
+            this.prisma.employee.findMany({
+                where: whereEmployee,
+                skip,
+                take: limit,
+                orderBy: { firstName: 'asc' },
+                select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    employeeCode: true,
+                    designation: { select: { name: true } },
+                    department: { select: { name: true } },
+                    avatar: true, // Avatar if available
+                    shift: {
+                        select: {
+                            startTime: true,
+                            graceTimeIn: true,
+                            workingDays: true
+                        }
+                    },
+                    company: { select: { graceTimeMinutes: true } }
+                }
+            }),
+            this.prisma.employee.count({ where: whereEmployee })
+        ]);
+
+        // 2. Prepare Date Range Logic
+        let businessDays = 0;
+        let holidayDates: string[] = [];
+        const start = startDate ? new Date(startDate) : startOfMonth(new Date());
+        const end = endDate ? new Date(endDate) : new Date();
+        const queryEnd = end > new Date() ? new Date() : end; // Cap at today for calc
+
+        if (startDate && endDate) {
+            // Get holidays in range
+            const holidays = await this.prisma.holiday.findMany({
+                where: {
+                    companyId,
+                    date: { gte: start, lte: end }
+                },
+                select: { date: true }
+            });
+            holidayDates = holidays.map(h => format(h.date, 'yyyy-MM-dd'));
+
+            // Calculate standard business days (mon-fri) - naive approach, 
+            // refined per employee below based on shift.
+            // For general filtering, we assume standard week if shift missing.
+        }
+
+        // 3. Fetch Attendance Records for these employees
+        const employeeIds = employees.map(e => e.id);
+        const records = await this.prisma.attendanceRecord.findMany({
+            where: {
+                companyId,
+                employeeId: { in: employeeIds },
+                date: { gte: start, lte: end }
+            },
+            select: {
+                employeeId: true,
+                status: true,
+                date: true,
+                lateMinutes: true,
+                checkInTime: true,
+                totalWorkMinutes: true
+            }
+        });
+
+        // 4. Fetch Approved Leaves
+        const leaves = await this.prisma.leave.findMany({
+            where: {
+                companyId,
+                employeeId: { in: employeeIds },
+                status: 'APPROVED',
+                OR: [
+                    { startDate: { lte: end }, endDate: { gte: start } }
+                ]
+            },
+            select: {
+                employeeId: true,
+                startDate: true,
+                endDate: true,
+                leaveType: { select: { name: true } }
+            }
+        });
+
+        // 5. Aggregate Stats
+        const items = employees.map(emp => {
+            // Filter records for this employee
+            const empRecords = records.filter(r => r.employeeId === emp.id);
+            const empLeaves = leaves.filter(l => l.employeeId === emp.id);
+
+            // Calculate Stats
+            let present = 0;
+            let late = 0;
+            let halfDay = 0;
+            let onLeave = 0;
+            let absent = 0;
+
+            // Helper to check if a date is a working day for this employee
+            const isWorkingDay = (date: Date) => {
+                const day = date.getDay();
+                // Use shift working days or default (Mon-Fri = 1-5)
+                const workingDays = emp.shift?.workingDays || [1, 2, 3, 4, 5];
+                if (!workingDays.includes(day)) return false;
+
+                // Check holiday
+                const dateStr = format(date, 'yyyy-MM-dd');
+                if (holidayDates.includes(dateStr)) return false;
+
+                return true;
+            };
+
+            // Count from Records
+            empRecords.forEach(r => {
+                if (r.status === 'PRESENT') {
+                    present++;
+                    if (r.lateMinutes > 0) late++;
+                } else if (r.status === 'HALF_DAY') {
+                    halfDay++;
+                    present++; // Half day counts as present usually? UI treats them separate in badge list.
+                    // Logic in getHistory: stats.halfday++; stats.present++;
+                    if (r.lateMinutes > 0) late++;
+                } else if (r.status === 'ABSENT') {
+                    // Explicit absent
+                } else if (r.status === 'ON_LEAVE') {
+                    onLeave++;
+                }
+            });
+
+            // Count Leaves (days overlapping range)
+            // (If record status is ON_LEAVE, we counted it above. Providing fallback if no record existed but leave approved)
+            // Actually, usually attendance record should be generated for leave. 
+            // If not, we iterate days.
+            // For simplicity, we trust records if they exist. 
+            // BUT: "Absent" is the missing piece.
+
+            // Calculate Absent:
+            // Iterate from start to queryEnd (today or endDate)
+            // If isWorkingDay AND no record (Present/HalfDay/OnLeave) -> Absent
+            let current = new Date(start);
+            while (current <= queryEnd) {
+                if (isWorkingDay(current)) {
+                    // Check if record exists
+                    const dateStr = format(current, 'yyyy-MM-dd');
+                    // We need to compare dates. r.date is Date object (UTC in Prisma usually)
+                    const hasRecord = empRecords.some(r => format(r.date, 'yyyy-MM-dd') === dateStr);
+
+                    if (!hasRecord) {
+                        // Check if on leave (if records not generated for leaves)
+                        const onLeaveDay = empLeaves.some(l =>
+                            current >= new Date(l.startDate) && current <= new Date(l.endDate)
+                        );
+
+                        if (onLeaveDay) {
+                            // If record didn't exist but leave exists, count as OnLeave?
+                            // Usually system generates ON_LEAVE record. 
+                            // If disjoint, we increment onLeave (if we rely on records for present)
+                            // For safety, let's assume records cover ON_LEAVE. 
+                            // If no record, it's Absent.
+                            // Unless it IS on leave day but system failed to generate record?
+                            // Let's count it as OnLeave if leave exists.
+                            // But wait, we might double count if we add to `onLeave` variable.
+                            // `onLeave` variable was from records.
+                            // Let's just NOT count it as Absent.
+                        } else {
+                            absent++;
+                        }
+                    } else {
+                        // Has record. If status is ABSENT, we count it?
+                        // If status is PRESENT/HALF_DAY/ON_LEAVE, it is not absent.
+                        // If record status is 'ABSENT', it definitely is absent.
+                        const rec = empRecords.find(r => format(r.date, 'yyyy-MM-dd') === dateStr);
+                        if (rec?.status === 'ABSENT') {
+                            absent++;
+                        }
+                    }
+                }
+                current.setDate(current.getDate() + 1);
+            }
+
+            return {
+                ...emp,
+                stats: {
+                    present,
+                    absent,
+                    late,
+                    halfDay,
+                    onLeave
+                }
+            };
+        });
+
+        return {
+            items,
+            meta: {
+                page,
+                limit,
+                total: totalEmployees,
+                totalPages: Math.ceil(totalEmployees / limit)
+            }
+        };
+    }
 
     async createManualEntry(
         companyId: string,
