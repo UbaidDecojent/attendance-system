@@ -20,6 +20,17 @@ export class PrismaService
 
     async onModuleInit() {
         await this.$connect();
+
+        // Perform seamless data payload patch for production database on boot.
+        // This renames the existing configuration accurately over to Annual Leave without needing migration files.
+        try {
+            await this.leaveType.updateMany({
+                where: { name: 'Paid Leave' },
+                data: { name: 'Annual Leave', code: 'AL' }
+            });
+        } catch (e) {
+            console.error('Failed to patch LeaveType names on startup', e);
+        }
     }
 
     async onModuleDestroy() {
