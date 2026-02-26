@@ -16,8 +16,11 @@ import {
     Users,
     UserCheck,
     UserX,
-    TimerOff
+    TimerOff,
+    Download
 } from 'lucide-react';
+import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
 import { attendanceApi } from '@/lib/api/attendance';
 import { employeesApi } from '@/lib/api/employees';
 import { formatDate, formatTime, cn } from '@/lib/utils';
@@ -53,11 +56,160 @@ export default function AttendancePage() {
     const endDate = format(dateRange.to, 'yyyy-MM-dd');
     const [isCorrectionOpen, setIsCorrectionOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<'history' | 'employees' | 'requests' | 'archived'>('history');
+    const [isExporting, setIsExporting] = useState(false);
 
     // For Admin: track which date card is selected (null = showing cards view)
     const [selectedDateForTable, setSelectedDateForTable] = useState<string | null>(null);
     // For Admin: track which employee card is selected
     const [selectedEmployeeForTable, setSelectedEmployeeForTable] = useState<string | null>(null);
+
+    const handleExportExcel = async () => {
+        setIsExporting(true);
+        const toastId = toast.loading("Preparing Excel export...");
+        try {
+            const employeesRes = await employeesApi.getAll({ limit: 1000 });
+            const employees = employeesRes.data || employeesRes.items || [];
+
+            if (employees.length === 0) {
+                toast.error("No employees found to export.", { id: toastId });
+                setIsExporting(false);
+                return;
+            }
+
+            const historyRes = await attendanceApi.getHistory({ startDate, endDate, limit: 10000 });
+            const records = historyRes.items || [];
+
+            const wb = XLSX.utils.book_new();
+
+            const startObj = new Date(startDate);
+            const endObj = new Date(endDate);
+            const dateStrings: string[] = [];
+
+            const tempDate = new Date(startObj);
+            while (tempDate <= endObj) {
+                dateStrings.push(format(tempDate, 'yyyy-MM-dd'));
+                tempDate.setDate(tempDate.getDate() + 1);
+            }
+
+            employees.forEach((emp: any) => {
+                const empName = `${emp.firstName} ${emp.lastName}`.trim();
+                const empRecords = records.filter((r: any) => r.employeeId === emp.id);
+
+                const recordsByDate = new Map<string, any>();
+                empRecords.forEach((r: any) => {
+                    const dStr = format(new Date(r.date), 'yyyy-MM-dd');
+                    recordsByDate.set(dStr, r);
+                });
+
+                const excelRows: any[] = [];
+
+                dateStrings.forEach(dStr => {
+                    const dObj = new Date(dStr);
+                    const dayOfWk = getDay(dObj);
+                    const isWeekend = dayOfWk === 0 || dayOfWk === 6;
+
+                    const record = recordsByDate.get(dStr);
+
+                    let exportStatus = "Absent";
+                    let checkInTime = "-";
+                    let checkOutTime = "-";
+                    let totalHoursExport: number | string = 0;
+
+                    if (!record) {
+                        exportStatus = isWeekend ? "Weekend" : "Absent";
+                    } else {
+                        checkInTime = record.checkInTime ? formatTime(record.checkInTime) : "-";
+                        checkOutTime = record.checkOutTime ? formatTime(record.checkOutTime) : "-";
+
+                        const totalMins = record.totalWorkMinutes || 0;
+                        const totalHours = totalMins / 60;
+                        totalHoursExport = totalHours > 0 ? parseFloat(totalHours.toFixed(2)) : 0;
+
+                        let isLate = false;
+                        if (record.checkInTime && record.employee?.shift?.startTime) {
+                            const actual = new Date(record.checkInTime);
+                            const [h, m] = record.employee.shift.startTime.split(':').map(Number);
+                            const shiftDate = new Date(actual);
+                            shiftDate.setHours(h, m, 0, 0);
+                            const diff = Math.floor((actual.getTime() - shiftDate.getTime()) / 60000);
+                            isLate = diff > 15;
+                        } else if (record.lateMinutes && record.lateMinutes > 0) {
+                            isLate = true;
+                        }
+
+                        if (record.status === 'ON_LEAVE') {
+                            exportStatus = "On Leave";
+                        } else if (record.status === 'HOLIDAY') {
+                            exportStatus = "Holiday";
+                        } else if (!record.checkOutTime && record.checkInTime) {
+                            const isToday = new Date().toDateString() === new Date(record.date).toDateString();
+                            if (isToday) {
+                                exportStatus = isLate ? "Late" : "Present";
+                            } else {
+                                exportStatus = "Missing Checkout";
+                            }
+                        } else if (isLate) {
+                            exportStatus = "Late";
+                        } else if (totalHours >= 7) {
+                            exportStatus = "Present";
+                        } else if (totalHours > 0 && totalHours < 7) {
+                            exportStatus = "Half Day";
+                        } else {
+                            exportStatus = "Absent";
+                        }
+                    }
+
+                    if (!isWeekend || record) {
+                        excelRows.push({
+                            "Date": dStr,
+                            "Employee Name": empName,
+                            "Check-in Time": checkInTime,
+                            "Check-out Time": checkOutTime,
+                            "Total Hours": totalHoursExport,
+                            "Status": exportStatus
+                        });
+                    }
+                });
+
+                let sheetName = empName.replace(/[\\\/\?\*\[\]]/g, '').substring(0, 31) || 'Unknown';
+                let c = 1;
+                const originalSheetName = sheetName;
+                while (wb.SheetNames.includes(sheetName)) {
+                    sheetName = `${originalSheetName.substring(0, 27)}_${c}`;
+                    c++;
+                }
+
+                if (excelRows.length === 0) {
+                    excelRows.push({ "Date": "No Records", "Employee Name": empName, "Check-in Time": "-", "Check-out Time": "-", "Total Hours": 0, "Status": "-" });
+                }
+
+                const ws = XLSX.utils.json_to_sheet(excelRows);
+
+                // Structure Improvements: Set column widths for readability
+                ws['!cols'] = [
+                    { wch: 15 }, // Date
+                    { wch: 30 }, // Employee Name
+                    { wch: 18 }, // Check-in Time
+                    { wch: 18 }, // Check-out Time
+                    { wch: 15 }, // Total Hours
+                    { wch: 25 }, // Status
+                ];
+
+                // Freeze the header row so it stays visible while scrolling
+                ws['!views'] = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
+
+                XLSX.utils.book_append_sheet(wb, ws, sheetName);
+            });
+
+            XLSX.writeFile(wb, `Attendance_Export_${startDate}_to_${endDate}.xlsx`);
+            toast.success("Excel exported successfully!", { id: toastId });
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to export Excel. See console for details.", { id: toastId });
+        } finally {
+            setIsExporting(false);
+        }
+    };
 
     const { data: history, isLoading } = useQuery({
         queryKey: ['attendanceHistory', startDate, endDate, isAdmin],
@@ -399,18 +551,71 @@ export default function AttendancePage() {
             {
                 accessorKey: 'status',
                 header: 'Status',
-                cell: ({ row }) => (
-                    <span className={cn(
-                        'inline-flex px-3 py-1.5 rounded-lg text-xs font-bold border',
-                        row.original.status === 'PRESENT'
-                            ? 'bg-lime text-black border-lime'
-                            : row.original.status === 'ABSENT'
-                                ? 'bg-red-500/10 text-red-500 border-red-500/20'
-                                : 'bg-zinc-800 text-zinc-400 border-zinc-700'
-                    )}>
-                        {row.original.status.replace('_', ' ')}
-                    </span>
-                ),
+                cell: ({ row }) => {
+                    const record = row.original;
+                    let displayStatus = record.status;
+                    let colorClass = 'bg-zinc-800 text-zinc-400 border-zinc-700'; // Default gray
+
+                    const totalMins = record.totalWorkMinutes || 0;
+                    const totalHours = totalMins / 60;
+
+                    let isLate = false;
+                    if (record.checkInTime && record.employee?.shift?.startTime) {
+                        const actual = new Date(record.checkInTime);
+                        const [h, m] = record.employee.shift.startTime.split(':').map(Number);
+                        const shiftDate = new Date(actual);
+                        shiftDate.setHours(h, m, 0, 0);
+                        const diff = Math.floor((actual.getTime() - shiftDate.getTime()) / 60000);
+                        isLate = diff > 15;
+                    } else if (record.lateMinutes && record.lateMinutes > 0) {
+                        isLate = true;
+                    }
+
+                    if (record.status === 'ON_LEAVE') {
+                        displayStatus = "ON LEAVE";
+                        colorClass = "bg-purple-500/10 text-purple-400 border-purple-500/20";
+                    } else if (record.status === 'HOLIDAY') {
+                        displayStatus = "HOLIDAY";
+                        colorClass = "bg-blue-500/10 text-blue-400 border-blue-500/20";
+                    } else if (record.checkInTime && !record.checkOutTime) {
+                        const isToday = new Date().toDateString() === new Date(record.date).toDateString();
+                        if (isToday) {
+                            if (isLate) {
+                                displayStatus = "LATE";
+                                colorClass = "bg-orange-500/10 text-orange-400 border-orange-500/20";
+                            } else {
+                                displayStatus = "PRESENT";
+                                colorClass = "bg-lime text-black border-lime";
+                            }
+                        } else {
+                            displayStatus = "CHECKOUT MISSING";
+                            colorClass = "bg-yellow-500/10 text-yellow-500 border-yellow-500/20";
+                        }
+                    } else if (isLate) {
+                        displayStatus = "LATE";
+                        colorClass = "bg-orange-500/10 text-orange-400 border-orange-500/20";
+                    } else if (totalHours >= 7 || record.status === 'PRESENT') {
+                        displayStatus = "PRESENT";
+                        colorClass = "bg-lime text-black border-lime";
+                    } else if ((totalHours > 0 && totalHours < 7) || record.status === 'HALF_DAY') {
+                        displayStatus = "HALF DAY";
+                        colorClass = "bg-indigo-500/10 text-indigo-400 border-indigo-500/20";
+                    } else if (record.status === 'ABSENT' || (!record.checkInTime && !record.checkOutTime)) {
+                        displayStatus = "ABSENT";
+                        colorClass = "bg-red-500/10 text-red-500 border-red-500/20";
+                    } else {
+                        displayStatus = record.status.replace('_', ' ');
+                    }
+
+                    return (
+                        <span className={cn(
+                            'inline-flex px-3 py-1.5 rounded-lg text-xs font-bold border uppercase tracking-wider whitespace-nowrap',
+                            colorClass
+                        )}>
+                            {displayStatus}
+                        </span>
+                    );
+                },
             },
         );
 
@@ -470,6 +675,16 @@ export default function AttendancePage() {
                     <p className="text-muted-foreground">View and track your attendance records</p>
                 </div>
                 <div className="flex items-center gap-3">
+                    {isAdmin && activeTab === 'history' && dateWiseStats.length > 0 && (
+                        <button
+                            onClick={handleExportExcel}
+                            disabled={isExporting}
+                            className="px-5 py-2.5 bg-white text-black hover:bg-zinc-200 rounded-xl text-sm font-semibold transition-all shadow-sm flex items-center gap-2 disabled:opacity-50"
+                        >
+                            <Download className="h-4 w-4" />
+                            {isExporting ? "Exporting..." : "Export Excel"}
+                        </button>
+                    )}
                     {!isAdmin && (
                         <button
                             onClick={() => setIsCorrectionOpen(true)}

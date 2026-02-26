@@ -55,11 +55,9 @@ export class LeavesService {
             throw new BadRequestException('End date must be after start date');
         }
 
-        // Check for backdated leave
-        const today = startOfDay(new Date());
-        if (startDate < today && !leaveType.allowBackdated) {
-            throw new BadRequestException('Backdated leave is not allowed for this leave type');
-        }
+        // Backdated leave check removed to allow employees to submit 
+        // past dates retroactively for accurate record keeping.
+
 
         // Calculate leave days
         let totalDays = this.calculateLeaveDays(startDate, endDate, companyId);
