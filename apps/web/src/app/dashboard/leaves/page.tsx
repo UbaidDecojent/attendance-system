@@ -187,7 +187,7 @@ export default function LeavesPage() {
                 accessorKey: 'reason',
                 header: 'Reason',
                 cell: ({ row }) => (
-                    <p className="text-sm text-zinc-400 max-w-[200px] truncate">{row.original.reason}</p>
+                    <p className="text-sm text-zinc-400 max-w-[300px] whitespace-normal break-words">{row.original.reason}</p>
                 ),
             },
             {

@@ -24,6 +24,7 @@ import { formatTime, cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { startOfWeek, endOfWeek, eachDayOfInterval, format } from 'date-fns';
+import { AdminLeaveRecordsBox } from './_components/AdminLeaveRecordsBox';
 
 export default function DashboardPage() {
     const router = useRouter();
@@ -371,53 +372,57 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Quick Insight / Today's Overview */}
-                    <div className="bg-[#111111] border border-white/5 rounded-[2rem] p-6 space-y-6 flex-1 flex flex-col justify-between">
-                        <div className="flex-1">
-                            <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-4">
-                                <p className="text-lg font-semibold text-white flex items-center gap-2">
-                                    <span className="text-zinc-500 text-sm uppercase tracking-wider">Today</span>
-                                    <span className="text-white">{format(today, 'EEEE, MMM do')}</span>
-                                </p>
-                            </div>
+                    <div className="bg-[#111111] border border-white/5 rounded-[2rem] p-6 space-y-6 flex-1 flex flex-col justify-between overflow-hidden">
+                        {user?.role === 'COMPANY_ADMIN' ? (
+                            <AdminLeaveRecordsBox />
+                        ) : (
+                            <div className="flex-1">
+                                <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-4">
+                                    <p className="text-lg font-semibold text-white flex items-center gap-2">
+                                        <span className="text-zinc-500 text-sm uppercase tracking-wider">Today</span>
+                                        <span className="text-white">{format(today, 'EEEE, MMM do')}</span>
+                                    </p>
+                                </div>
 
-                            <div className="flex-1 flex flex-col gap-3 overflow-y-auto max-h-[200px]">
-                                <div className="flex flex-col gap-3 h-full justify-between">
-                                    <div className="space-y-3">
-                                        <div className="flex items-center gap-4 group cursor-pointer hover:bg-zinc-900/50 p-2 -mx-2 rounded-xl transition-colors" onClick={() => router.push('/dashboard/leaves?status=PENDING')}>
-                                            <div className="h-10 w-10 rounded-full bg-zinc-900 border border-white/5 flex items-center justify-center text-orange-400 font-medium group-hover:scale-110 transition-transform">
-                                                <AlertCircle className="h-5 w-5" />
+                                <div className="flex-1 flex flex-col gap-3 overflow-y-auto max-h-[200px]">
+                                    <div className="flex flex-col gap-3 h-full justify-between">
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-4 group cursor-pointer hover:bg-zinc-900/50 p-2 -mx-2 rounded-xl transition-colors" onClick={() => router.push('/dashboard/leaves?status=PENDING')}>
+                                                <div className="h-10 w-10 rounded-full bg-zinc-900 border border-white/5 flex items-center justify-center text-orange-400 font-medium group-hover:scale-110 transition-transform">
+                                                    <AlertCircle className="h-5 w-5" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-semibold text-white">Pending Requests</p>
+                                                    <p className="text-xs text-zinc-500">Review leave applications</p>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <p className="text-sm font-semibold text-white">Pending Requests</p>
-                                                <p className="text-xs text-zinc-500">Review leave applications</p>
+
+                                            <div className="flex items-center gap-4 group cursor-pointer hover:bg-zinc-900/50 p-2 -mx-2 rounded-xl transition-colors" onClick={() => router.push('/dashboard/employees')}>
+                                                <div className="h-10 w-10 rounded-full bg-zinc-900 border border-white/5 flex items-center justify-center text-blue-400 font-medium group-hover:scale-110 transition-transform">
+                                                    <Users className="h-5 w-5" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-semibold text-white">Manage Team</p>
+                                                    <p className="text-xs text-zinc-500">View all employees</p>
+                                                </div>
                                             </div>
                                         </div>
 
-                                        <div className="flex items-center gap-4 group cursor-pointer hover:bg-zinc-900/50 p-2 -mx-2 rounded-xl transition-colors" onClick={() => router.push('/dashboard/employees')}>
-                                            <div className="h-10 w-10 rounded-full bg-zinc-900 border border-white/5 flex items-center justify-center text-blue-400 font-medium group-hover:scale-110 transition-transform">
-                                                <Users className="h-5 w-5" />
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-semibold text-white">Manage Team</p>
-                                                <p className="text-xs text-zinc-500">View all employees</p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-auto pt-6 border-t border-white/5">
-                                        <div className="flex items-center gap-4 group cursor-pointer hover:bg-zinc-900/50 p-2 -mx-2 rounded-xl transition-colors" onClick={() => router.push('/dashboard/reports')}>
-                                            <div className="h-10 w-10 rounded-full bg-zinc-900 border border-white/5 flex items-center justify-center text-purple-400 font-medium group-hover:scale-110 transition-transform">
-                                                <TrendingUp className="h-5 w-5" />
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-semibold text-white">Generate Reports</p>
-                                                <p className="text-xs text-zinc-500">Weekly & Monthly analysis</p>
+                                        <div className="mt-auto pt-6 border-t border-white/5">
+                                            <div className="flex items-center gap-4 group cursor-pointer hover:bg-zinc-900/50 p-2 -mx-2 rounded-xl transition-colors" onClick={() => router.push('/dashboard/reports')}>
+                                                <div className="h-10 w-10 rounded-full bg-zinc-900 border border-white/5 flex items-center justify-center text-purple-400 font-medium group-hover:scale-110 transition-transform">
+                                                    <TrendingUp className="h-5 w-5" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-semibold text-white">Generate Reports</p>
+                                                    <p className="text-xs text-zinc-500">Weekly & Monthly analysis</p>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
                     </div>
                 </div>
 
