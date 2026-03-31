@@ -120,7 +120,7 @@ export function HoursAdjustmentsTab({ isAdmin }: { isAdmin: boolean }) {
 
     const handleBulkAction = (status: 'APPROVED' | 'REJECTED') => {
         const records: { employeeId: string; date: string; shortMinutes: number; extraMinutes: number }[] = [];
-        for (const key of selectedRecords) {
+        for (const key of Array.from(selectedRecords)) {
             const [employeeId, date] = key.split('::');
             const emp = summaries?.find((e) => e.employeeId === employeeId);
             const day = emp?.dailyRecords?.find((d) => d.date === date);
