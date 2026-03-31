@@ -66,13 +66,13 @@ export default function ManageLeaveBalanceModal({
         enabled: isOpen,
     });
     const balanceData = balances?.find((b: any) => b.leaveTypeId === selectedTypeId);
-    const currentBalance = balanceData ? balanceData.remaining : null;
+    const currentAllocation = balanceData ? balanceData.total : null;
 
     useEffect(() => {
-        if (typeof currentBalance === 'number') {
-            setValue('adjustment', currentBalance);
+        if (typeof currentAllocation === 'number') {
+            setValue('adjustment', currentAllocation);
         }
-    }, [currentBalance, setValue]);
+    }, [currentAllocation, setValue]);
 
     const mutation = useMutation({
         mutationFn: (data: FormData) => employeesApi.updateLeaveBalance(employeeId, data),
@@ -137,12 +137,12 @@ export default function ManageLeaveBalanceModal({
                     {/* Current Balance Display */}
                     {selectedTypeId && (
                         <div className="bg-muted/50 p-4 rounded-xl flex items-center justify-between">
-                            <span className="text-sm font-medium">Current Balance:</span>
+                            <span className="text-sm font-medium">Current Allocation:</span>
                             <span className="font-bold text-lg">
                                 {isLoadingBalances ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
                                 ) : (
-                                    currentBalance ?? selectedType?.defaultDays ?? 'N/A'
+                                    (balanceData ? balanceData.total : selectedType?.defaultDays) ?? 'N/A'
                                 )}
                             </span>
                         </div>

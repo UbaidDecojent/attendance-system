@@ -1,0 +1,111 @@
+[DEBUG] Raw Task Response for Project CriticL.ai:
+{
+  "milestone_id": "2006871000000000073",
+  "link": {
+    "timesheet": {
+      "url": "https://projectsapi.zoho.com/restapi/portal/788417934/projects/2006871000003871043/tasks/2006871000004213053/logs/"
+    },
+    "web": {
+      "url": "https://projects.zoho.com/portal/decojentdotcom#zp/task-detail/2006871000004213053"
+    },
+    "self": {
+      "url": "https://projectsapi.zoho.com/restapi/portal/788417934/projects/2006871000003871043/tasks/2006871000004213053/"
+    }
+  },
+  "description": "<div><br/></div>",
+  "created_by_zpuid": "2006871000001576023",
+  "work_form": "standard_work",
+  "is_comment_added": false,
+  "duration": "0",
+  "added_via": "web",
+  "last_updated_time_long": 1770617146336,
+  "is_forum_associated": false,
+  "details": {
+    "owners": [
+      {
+        "zpuid": "2006871000001576023",
+        "full_name": "Muhammad Umair",
+        "work": "100",
+        "name": "Umair Qamar",
+        "last_name": "Umair",
+        "id": "849688734",
+        "first_name": "Muhammad",
+        "email": "umair@decojent.com"
+      },
+      {
+        "zpuid": "2006871000000043003",
+        "full_name": "Mohiuddin Parekh",
+        "work": "100",
+        "name": "Mohiuddin",
+        "last_name": "Parekh",
+        "id": "642873959",
+        "first_name": "Mohiuddin",
+        "email": "mohi@decojent.com"
+      },
+      {
+        "zpuid": "2006871000000045543",
+        "full_name": "Zohair Saifuddin",
+        "work": "100",
+        "name": "Zohair",
+        "last_name": "Saifuddin",
+        "id": "703598139",
+        "first_name": "Zohair",
+        "email": "zohair@decojent.com"
+      }
+    ]
+  },
+  "id": 2006871000004213000,
+  "created_by_email": "umair@decojent.com",
+  "key": "CR1-T3",
+  "created_person": "Muhammad Umair",
+  "created_time_long": 1770617129197,
+  "created_time": "02-09-2026",
+  "is_reminder_set": false,
+  "is_recurrence_set": false,
+  "created_time_format": "02-09-2026 11:05:29 AM",
+  "created_by_full_name": "Muhammad Umair",
+  "subtasks": false,
+  "work": "00:00",
+  "duration_type": "days",
+  "isparent": false,
+  "work_type": "work_hours",
+  "completed": false,
+  "task_followers": {
+    "FOLUSERS": "",
+    "FOLLOWERSIZE": -1,
+    "FOLLOWERS": []
+  },
+  "priority": "None",
+  "task_duration_as_work": true,
+  "created_by": "849688734",
+  "percent_complete": "0",
+  "GROUP_NAME": {
+    "ASSOCIATED_TEAMS": {
+      "AnyTeam": "Not Associated"
+    },
+    "ASSOCIATED_TEAMS_COUNT": 0,
+    "IS_TEAM_UNASSIGNED": true
+  },
+  "last_updated_time": "02-09-2026",
+  "name": "Sectrify Branding",
+  "is_docs_assocoated": false,
+  "id_string": "2006871000004213053",
+  "log_hours": {
+    "non_billable_hours": "0.0",
+    "billable_hours": "13.00"
+  },
+  "tasklist": {
+    "name": "General",
+    "id_string": "2006871000003867024",
+    "id": "2006871000003867024"
+  },
+  "last_updated_time_format": "02-09-2026 11:05:46 AM",
+  "billingtype": "Billable",
+  "order_sequence": 3,
+  "status": {
+    "name": "In Progress",
+    "id": "2006871000000031001",
+    "type": "open",
+    "color_code": "#fbc11e"
+  }
+}

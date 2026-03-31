@@ -397,22 +397,15 @@ export default function AttendancePage() {
                     const shiftStart = record.employee?.shift?.startTime;
 
                     let statusLabel = null;
-                    if (record.checkInTime && shiftStart) {
-                        const actual = new Date(record.checkInTime);
-                        const [h, m] = shiftStart.split(':').map(Number);
-                        const shiftDate = new Date(actual);
-                        shiftDate.setHours(h, m, 0, 0);
-
-                        const diff = Math.floor((actual.getTime() - shiftDate.getTime()) / 60000);
-                        const absDiff = Math.abs(diff);
+                    if (record.checkInTime) {
                         const formatDuration = (mins: number) => mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m`;
-
-                        if (diff <= 15) {
-                            // Early or within grace period -> On Time (Green)
+                        
+                        // Trust the backend's exact late computation recorded at the moment of check-in
+                        if (record.lateMinutes > 0) {
+                            statusLabel = { text: `Late: ${formatDuration(record.lateMinutes)}`, color: 'text-red-500' };
+                        } else if (shiftStart) {
+                            // If they have a shift logic assigned and didn't trigger lateMinutes, they are on time.
                             statusLabel = { text: 'On Time', color: 'text-lime' };
-                        } else {
-                            // Late -> Red with duration
-                            statusLabel = { text: `Late: ${formatDuration(diff)}`, color: 'text-red-500' };
                         }
                     }
 
@@ -685,7 +678,7 @@ export default function AttendancePage() {
                             {isExporting ? "Exporting..." : "Export Excel"}
                         </button>
                     )}
-                    {!isAdmin && (
+                    {user?.role !== 'COMPANY_ADMIN' && (
                         <button
                             onClick={() => setIsCorrectionOpen(true)}
                             className="px-5 py-2.5 bg-lime hover:bg-lime/90 text-black rounded-xl text-sm font-semibold transition-all shadow-[0_0_20px_-5px_rgba(212,244,69,0.4)] hover:shadow-[0_0_25px_-5px_rgba(212,244,69,0.6)] active:scale-95 flex items-center gap-2"

@@ -32,6 +32,7 @@ import { TenantMiddleware } from './common/middleware/tenant.middleware';
 import { RequestLoggerMiddleware } from './common/middleware/request-logger.middleware';
 import { TimeLogsModule } from './modules/time-logs/time-logs.module';
 import { DailyUpdatesModule } from './modules/daily-updates/daily-updates.module';
+import { MissionStrictModule } from './modules/mission-strict/mission-strict.module';
 
 @Module({
     imports: [
@@ -78,6 +79,7 @@ import { DailyUpdatesModule } from './modules/daily-updates/daily-updates.module
         TasksModule,
         TimeLogsModule,
         DailyUpdatesModule,
+        MissionStrictModule,
     ],
     providers: [
         {

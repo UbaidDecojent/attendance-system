@@ -24,11 +24,12 @@ import { DataTable } from '@/components/data-table';
 import { ColumnDef } from '@tanstack/react-table';
 import { employeesApi } from '@/lib/api/employees';
 import ManageLeaveBalanceModal from '@/components/employees/ManageLeaveBalanceModal';
+import { HoursAdjustmentsTab } from './_components/HoursAdjustmentsTab';
 
 export default function LeavesPage() {
     const queryClient = useQueryClient();
     const user = useAuthStore((state) => state.user);
-    const [activeTab, setActiveTab] = useState<'requests' | 'balances'>('requests');
+    const [activeTab, setActiveTab] = useState<'requests' | 'balances' | 'adjustments'>('requests');
     const [statusFilter, setStatusFilter] = useState('');
     const [page, setPage] = useState(1);
     const [balancesPage, setBalancesPage] = useState(1);
@@ -386,6 +387,17 @@ export default function LeavesPage() {
                     >
                         Manage Leaves
                     </button>
+                    <button
+                        onClick={() => setActiveTab('adjustments')}
+                        className={cn(
+                            "px-4 py-3 text-sm font-medium border-b-2 transition-colors",
+                            activeTab === 'adjustments'
+                                ? "border-lime text-lime"
+                                : "border-transparent text-zinc-400 hover:text-white"
+                        )}
+                    >
+                        Hours Adjustments
+                    </button>
                 </div>
             )}
 
@@ -508,6 +520,13 @@ export default function LeavesPage() {
                         isLoading={isLoadingBalances}
                         onRowClick={(row) => setSelectedEmployeeLeaves(row)}
                     />
+                </div>
+            )}
+
+            {/* ADJUSTMENTS TAB CONTENT */}
+            {activeTab === 'adjustments' && (
+                <div className="flex flex-col gap-6">
+                    <HoursAdjustmentsTab isAdmin={isManager} />
                 </div>
             )}
 

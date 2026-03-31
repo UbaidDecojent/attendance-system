@@ -179,13 +179,36 @@ export class LeavesService {
 
             if (employee?.leaveBalances) {
                 const balances = employee.leaveBalances as Record<string, number>;
+
+                // Calculate used balances for the current year
+                const approvedLeaves = await this.prisma.leave.groupBy({
+                    by: ['leaveTypeId'],
+                    where: {
+                        employeeId,
+                        companyId,
+                        status: 'APPROVED',
+                        startDate: { gte: new Date('2026-01-01') },
+                    },
+                    _sum: { totalDays: true },
+                });
+
+                const usedMap = new Map();
+                for (const l of approvedLeaves) {
+                    usedMap.set(l.leaveTypeId, l._sum.totalDays || 0);
+                }
+
                 // Only return leave types that have been assigned to the employee
                 return leaveTypes
-                    .filter(type => Object.prototype.hasOwnProperty.call(balances, type.id))
-                    .map(type => ({
-                        ...type,
-                        balance: balances[type.id] ?? 0,
-                    }));
+                    .filter((type) => Object.prototype.hasOwnProperty.call(balances, type.id))
+                    .map((type) => {
+                        const total = balances[type.id] ?? 0;
+                        const used = usedMap.get(type.id) || 0;
+                        return {
+                            ...type,
+                            balance: Math.max(0, total - used),
+                            totalAllocation: total,
+                        };
+                    });
             } else {
                 return [];
             }
@@ -502,20 +525,8 @@ export class LeavesService {
     private async processApprovedLeave(leave: any) {
         const { employeeId, leaveTypeId, totalDays, startDate, endDate, companyId } = leave;
 
-        // Deduct from leave balance
-        const employee = await this.prisma.employee.findUnique({
-            where: { id: employeeId },
-        });
-
-        if (employee) {
-            const balances = employee.leaveBalances as Record<string, number>;
-            balances[leaveTypeId] = (balances[leaveTypeId] || 0) - Number(totalDays);
-
-            await this.prisma.employee.update({
-                where: { id: employeeId },
-                data: { leaveBalances: balances },
-            });
-        }
+        // Leave balance is dynamically computed using approved leaves vs total allocation.
+        // We do not decrement the base allocation statically.
 
         // Create attendance records for leave days
         const leaveDays = eachDayOfInterval({ start: startDate, end: endDate });
@@ -546,19 +557,7 @@ export class LeavesService {
     }
 
     private async restoreLeaveBalance(leave: any) {
-        const employee = await this.prisma.employee.findUnique({
-            where: { id: leave.employeeId },
-        });
-
-        if (employee) {
-            const balances = employee.leaveBalances as Record<string, number>;
-            balances[leave.leaveTypeId] = (balances[leave.leaveTypeId] || 0) + Number(leave.totalDays);
-
-            await this.prisma.employee.update({
-                where: { id: leave.employeeId },
-                data: { leaveBalances: balances },
-            });
-        }
+        // Restore is dynamic. Since we don't deduct base allocation, we do not need to restore it.
     }
 
     private calculateLeaveDays(start: Date, end: Date, companyId: string): number {

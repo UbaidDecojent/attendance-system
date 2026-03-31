@@ -37,12 +37,13 @@ export function AdminLeaveRecordsBox() {
 
     return (
         <>
-            <div className="flex-1 flex flex-col h-full bg-[#111111] overflow-hidden">
+            <div className="flex-1 flex flex-col h-full bg-[#111111] overflow-hidden min-h-0">
                 <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-3">
                     <p className="text-lg font-semibold text-white">Leave Records</p>
                 </div>
 
-                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar" style={{ maxHeight: '200px' }}>
+                <div className="flex-1 relative min-h-[150px]">
+                    <div className="absolute inset-0 overflow-y-auto pr-2 custom-scrollbar">
                     {isLoadingEmployees ? (
                         <div className="flex items-center justify-center h-full text-zinc-500 text-sm">Loading records...</div>
                     ) : employees.length === 0 ? (
@@ -102,6 +103,7 @@ export function AdminLeaveRecordsBox() {
                             </tbody>
                         </table>
                     )}
+                    </div>
                 </div>
             </div>
 

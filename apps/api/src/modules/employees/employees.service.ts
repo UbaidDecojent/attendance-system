@@ -322,16 +322,17 @@ export class EmployeesService {
 
                 const leaves = leaveTypes.map((lt) => {
                     const used = usedLeavesMap.get(`${emp.id}-${lt.id}`) || 0;
-                    const remaining = balances[lt.id] || 0;
+                    const total = balances[lt.id] ?? 0;
+                    const remaining = Math.max(0, total - used);
 
                     return {
                         leaveTypeId: lt.id,
                         leaveTypeName: lt.name,
                         code: lt.code,
                         color: lt.color,
-                        total: used + remaining,
-                        used: used,
-                        remaining: remaining,
+                        total,
+                        used,
+                        remaining,
                     };
                 });
 
@@ -528,17 +529,39 @@ export class EmployeesService {
             where: { companyId, isActive: true },
         });
 
-        const balances = employee.leaveBalances as Record<string, number>;
+        // Compute used leaves to return accurate remaining
+        const approvedLeaves = await this.prisma.leave.groupBy({
+            by: ['leaveTypeId'],
+            where: {
+                employeeId: id,
+                companyId,
+                status: 'APPROVED',
+                startDate: { gte: new Date('2026-01-01') },
+            },
+            _sum: { totalDays: true },
+        });
 
-        return leaveTypes.map((lt) => ({
-            leaveTypeId: lt.id,
-            leaveTypeName: lt.name,
-            code: lt.code,
-            color: lt.color,
-            total: lt.defaultDays,
-            used: lt.defaultDays - (balances[lt.id] || 0),
-            remaining: balances[lt.id] || 0,
-        }));
+        const usedMap = new Map();
+        for (const l of approvedLeaves) {
+            usedMap.set(l.leaveTypeId, l._sum.totalDays || 0);
+        }
+
+        const balances = (employee.leaveBalances || {}) as Record<string, number>;
+
+        return leaveTypes.map((lt) => {
+            const total = balances[lt.id] ?? 0;
+            const used = usedMap.get(lt.id) || 0;
+            return {
+                leaveTypeId: lt.id,
+                leaveTypeName: lt.name,
+                code: lt.code,
+                color: lt.color,
+                total,
+                used,
+                remaining: Math.max(0, total - used),
+                defaultDays: lt.defaultDays, // Expose this property so the modal can use it as a hint
+            };
+        });
     }
 
     async updateLeaveBalance(

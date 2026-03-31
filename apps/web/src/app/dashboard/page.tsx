@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
@@ -353,7 +353,7 @@ export default function DashboardPage() {
         <div className="space-y-8">
             <div className="grid lg:grid-cols-3 gap-8">
                 {/* Left Column: Welcome & Summary */}
-                <div className="lg:col-span-1 flex flex-col gap-8 h-full">
+                <div className="lg:col-span-1 flex flex-col gap-8 h-full min-h-0">
                     <div>
                         <div className="flex items-center gap-2 mb-4">
                             <span className="h-2 w-2 rounded-full bg-lime animate-pulse shadow-[0_0_10px_#CCFF00]" />
@@ -372,11 +372,11 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Quick Insight / Today's Overview */}
-                    <div className="bg-[#111111] border border-white/5 rounded-[2rem] p-6 space-y-6 flex-1 flex flex-col justify-between overflow-hidden">
+                    <div className="bg-[#111111] border border-white/5 rounded-[2rem] p-6 space-y-6 flex-1 flex flex-col justify-between overflow-hidden min-h-0">
                         {user?.role === 'COMPANY_ADMIN' ? (
                             <AdminLeaveRecordsBox />
                         ) : (
-                            <div className="flex-1">
+                            <div className="flex-1 flex flex-col min-h-0">
                                 <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-4">
                                     <p className="text-lg font-semibold text-white flex items-center gap-2">
                                         <span className="text-zinc-500 text-sm uppercase tracking-wider">Today</span>
@@ -384,8 +384,9 @@ export default function DashboardPage() {
                                     </p>
                                 </div>
 
-                                <div className="flex-1 flex flex-col gap-3 overflow-y-auto max-h-[200px]">
-                                    <div className="flex flex-col gap-3 h-full justify-between">
+                                <div className="flex-1 relative min-h-[150px]">
+                                    <div className="absolute inset-0 flex flex-col gap-3 overflow-y-auto pr-2 custom-scrollbar">
+                                        <div className="flex flex-col gap-3 h-full justify-between">
                                         <div className="space-y-3">
                                             <div className="flex items-center gap-4 group cursor-pointer hover:bg-zinc-900/50 p-2 -mx-2 rounded-xl transition-colors" onClick={() => router.push('/dashboard/leaves?status=PENDING')}>
                                                 <div className="h-10 w-10 rounded-full bg-zinc-900 border border-white/5 flex items-center justify-center text-orange-400 font-medium group-hover:scale-110 transition-transform">
@@ -418,6 +419,7 @@ export default function DashboardPage() {
                                                     <p className="text-xs text-zinc-500">Weekly & Monthly analysis</p>
                                                 </div>
                                             </div>
+                                        </div>
                                         </div>
                                     </div>
                                 </div>
